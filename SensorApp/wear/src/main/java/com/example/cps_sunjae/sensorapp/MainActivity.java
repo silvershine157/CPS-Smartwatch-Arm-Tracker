@@ -49,15 +49,10 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_MAG = "sensor.mag";
     private static final String SENSOR_lACCEL = "sensor.laccel";
     private static final String SENSOR_ROT = "sensor.rot";
+    private static final String SENSOR_GRAV = "sensor.grav";
 
     private static final String SENSOR_ORIENT = "sensor.orient";
-    // CSV files
-    private BufferedWriter bw = null;
 
-    private String filename = "sensor_data.csv";
-    private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-    private File file;
-    FileOutputStream outputStream;
     private DataClient mDataClient;
 
     // Arrays to hold sensor data
@@ -97,6 +92,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float> rotY = new ArrayList<>();
     private ArrayList<Float> rotZ = new ArrayList<>();
 
+    // Gravity
+    private ArrayList<Long> gravT = new ArrayList<>();
+    private ArrayList<Float>gravX = new ArrayList<>();
+    private ArrayList<Float>gravY = new ArrayList<>();
+    private ArrayList<Float>gravZ = new ArrayList<>();
+
 
     // Sensors
     private SensorManager mSensorManager;
@@ -106,6 +107,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private Sensor mGyro;
     private Sensor mOrient;
     private Sensor mRot;
+    private Sensor mGrav;
 
     // Sensor variables
     private boolean start = false;
@@ -126,8 +128,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         //Enables Always-on
         setAmbientEnabled();
 
-        file = new File(path, filename);
-
         // Get an instance of the SensorManager
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
@@ -137,7 +137,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mLAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-
+        mGrav = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
 
         // Set Labels
         currentLabel = (TextView) findViewById(R.id.currentActivity);
@@ -185,6 +185,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 getGyroscope(event);
             } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
                 getRotationVector(event);
+            } else if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
+                getGravity(event);
             }
         }
     }
@@ -259,6 +261,20 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
     }
 
+    private void getGravity(SensorEvent event) {
+        float gravityX = event.values[0];
+        float gravityY = event.values[1];
+        float gravityZ = event.values[2];
+
+        //Record the values
+        if (start) {
+            gravT.add(event.timestamp);
+            gravX.add(gravityX);
+            gravY.add(gravityY);
+            gravZ.add(gravityZ);
+        }
+    }
+
     @Override
     public void onAccuracyChanged(Sensor sensor, int i){
     }
@@ -271,6 +287,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mSensorManager.registerListener(this, mLAccel, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mMag, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mRot, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mGrav,SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
@@ -284,36 +301,20 @@ public class MainActivity extends WearableActivity implements SensorEventListene
      * Make CSV file and send to phone
      */
     public void sendSensorData(){
-        try{
-            outputStream = new FileOutputStream(file);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         String accel = "";
         String gyro = "";
         String mag = "";
         String lAccel = "";
         String rot = "";
         String orient = "";
+        String grav = "";
 
         // Accelerometer
-//        try {
-//            outputStream.write("Accelerometer\n".getBytes());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-
         for (int i = 0; i < accelT.size(); i++) {
             accel = accel.concat(Long.toString(accelT.get(i)) + ", " +
                     Float.toString(accelX.get(i)) + ", " +
                     Float.toString(accelY.get(i)) + ", " +
                     Float.toString(accelZ.get(i)) + "\n");
-//            try {
-//                outputStream.write(accel.getBytes());
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
         }
 
         //GyroScope
@@ -349,17 +350,26 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                     Float.toString(rotZ.get(i)) + "\n");
         }
 
+        // Gravity
+        for (int i = 0; i < gravT.size(); i++) {
+            grav = grav.concat(Long.toString(gravT.get(i)) + ", " +
+                    Float.toString(gravX.get(i)) + ", " +
+                    Float.toString(gravY.get(i)) + ", " +
+                    Float.toString(gravZ.get(i)) + "\n");
+        }
+
+        System.out.println(grav);
+
         PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sensor");
         putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
         putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
         putDataMapReq.getDataMap().putString(SENSOR_MAG, mag);
         putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
         putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
+        putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
         putDataReq.setUrgent();
         Task<DataItem> putDataTask = mDataClient.putDataItem(putDataReq);
     }
-
-
 }
 
