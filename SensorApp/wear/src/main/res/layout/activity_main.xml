@@ -1,36 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.wear.widget.BoxInsetLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/dark_grey"
-    android:padding="@dimen/box_inset_layout_padding"
-    tools:context=".MainActivity"
-    tools:deviceIds="wear">
+    android:layout_width="match_parent"
+    android:padding="15dp">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="@dimen/inner_frame_layout_padding"
-        android:orientation="vertical"
         app:boxedEdges="all">
 
         <TextView
-            android:id="@+id/accelX"
-            android:layout_width="wrap_content"
+            android:id="@+id/currentActivity"
+            android:gravity="center"
             android:layout_height="wrap_content"
-            android:text="@string/hello_world" />
-        <TextView
-            android:id="@+id/accelY"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/hello_world" />
-        <TextView
-            android:id="@+id/accelZ"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/hello_world" />
+            android:layout_width="match_parent"
+            android:text="@string/hello_world"
+            android:textColor="@color/white" />
 
-    </LinearLayout>
+        <Button
+            android:id="@+id/btn_start"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="bottom|left"
+            android:background="@null"
+            android:text="@string/start"
+            android:textColor="@color/circular_button_normal" />
+
+        <Button
+            android:id="@+id/btn_stop"
+            android:background="@null"
+            android:layout_gravity="bottom|right"
+            android:layout_height="50dp"
+            android:text="@string/stop"
+            android:layout_width="50dp"
+            android:textColor="@color/dark_red"/>
+    </FrameLayout>
 </android.support.wear.widget.BoxInsetLayout>
