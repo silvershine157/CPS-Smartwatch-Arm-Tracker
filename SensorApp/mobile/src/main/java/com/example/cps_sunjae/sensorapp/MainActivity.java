@@ -28,6 +28,11 @@ import java.util.Calendar;
 public class MainActivity extends AppCompatActivity implements DataClient.OnDataChangedListener{
 
     private static final String SENSOR_ACCEL = "sensor.accel";
+    private static final String SENSOR_GYRO = "sensor.gyro";
+    private static final String SENSOR_MAG = "sensor.mag";
+    private static final String SENSOR_lACCEL = "sensor.laccel";
+    private static final String SENSOR_ROT = "sensor.rot";
+    
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
 
