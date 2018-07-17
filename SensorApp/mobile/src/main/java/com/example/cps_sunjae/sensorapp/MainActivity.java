@@ -1,13 +1,9 @@
 package com.example.cps_sunjae.sensorapp;
 
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
-import android.content.BroadcastReceiver;
 import android.os.Environment;
 
 import com.google.android.gms.wearable.DataClient;
@@ -20,6 +16,7 @@ import com.google.android.gms.wearable.Wearable;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -32,7 +29,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     private static final String SENSOR_MAG = "sensor.mag";
     private static final String SENSOR_lACCEL = "sensor.laccel";
     private static final String SENSOR_ROT = "sensor.rot";
-    
+
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
 
@@ -42,11 +39,14 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
     FileOutputStream outputStream;
 
+    TextView currentStatus;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        currentStatus = (TextView) findViewById(R.id.status);
 
     }
 
@@ -64,23 +64,66 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
     @Override
     public void onDataChanged(DataEventBuffer dataEvents) {
+        Log.d("testdrive", "data changed");
         Date d = Calendar.getInstance().getTime();
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
         String date = df.format(d);
-        file = new File(path, date);
-        try{
-            outputStream = new FileOutputStream(file);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
         for (DataEvent event : dataEvents) {
             if (event.getType() == DataEvent.TYPE_CHANGED) {
                 DataItem item = event.getDataItem();
                 if (item.getUri().getPath().compareTo("/sensor") == 0) {
+                    Log.d("testdrive", "data received");
+                    currentStatus.setText("received data");
                     DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
                     try {
-                        outputStream.write(dataMap.getString(SENSOR_ACCEL).getBytes());
+                        String filename = date.concat("_accel.txt");
+                        file = new File(path, filename);
+                        FileOutputStream f = new FileOutputStream(file);
+                        PrintWriter pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_ACCEL));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_gyro.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_GYRO));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_lAccel.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_lACCEL));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_rot.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_ROT));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_mag.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_MAG));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        Log.d("testdrive", "data written");
+                        currentStatus.setText("idle");
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

@@ -52,9 +52,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_GRAV = "sensor.grav";
 
     private static final String SENSOR_ORIENT = "sensor.orient";
-
-    private DataClient mDataClient;
-
+    
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
@@ -360,6 +358,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         System.out.println(grav);
 
+        Log.d("testdrive", "sending data");
+
         PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sensor");
         putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
         putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
@@ -367,9 +367,33 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
         putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
         putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
-        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
-        putDataReq.setUrgent();
-        Task<DataItem> putDataTask = mDataClient.putDataItem(putDataReq);
+
+        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
+
+        Task<DataItem> putDataTask = Wearable.getDataClient(this).putDataItem(putDataReq);
+        Log.d("testdrive", accel);
+        accelT.clear();
+        accelX.clear();
+        accelY.clear();
+        accelZ.clear();
+        magT.clear();
+        magX.clear();
+        magY.clear();
+        magZ.clear();
+        lAccelT.clear();
+        lAccelX.clear();
+        lAccelY.clear();
+        lAccelZ.clear();
+        gyroT.clear();
+        gyroX.clear();
+        gyroY.clear();
+        gyroZ.clear();
+        rotT.clear();
+        rotX.clear();
+        rotY.clear();
+        rotZ.clear();
+
+        Log.d("testdrive", "sent Data");
     }
 }
 
