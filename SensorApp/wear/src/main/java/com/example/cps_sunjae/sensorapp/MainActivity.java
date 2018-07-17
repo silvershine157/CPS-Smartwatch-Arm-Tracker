@@ -44,23 +44,57 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     // CSV files
     private BufferedWriter bw = null;
 
-    private String filename = "sensor_data.txt";
+    private String filename = "sensor_data.csv";
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
     FileOutputStream outputStream;
 
     // Arrays to hold sensor data
+    // Accelerometer
+    private ArrayList<Long> accelT = new ArrayList<>();
     private ArrayList<Float> accelX = new ArrayList<>();
     private ArrayList<Float> accelY = new ArrayList<>();
     private ArrayList<Float> accelZ = new ArrayList<>();
+
+    // Magnetometer
+    private ArrayList<Long> magT = new ArrayList<>();
+    private ArrayList<Float> magX = new ArrayList<>();
+    private ArrayList<Float> magY = new ArrayList<>();
+    private ArrayList<Float> magZ = new ArrayList<>();
+
+    // Linear Acceleration
+    private ArrayList<Long> lAccelT = new ArrayList<>();
+    private ArrayList<Float> lAccelX = new ArrayList<>();
+    private ArrayList<Float> lAccelY = new ArrayList<>();
+    private ArrayList<Float> lAccelZ = new ArrayList<>();
+
+    // Gyroscope
+    private ArrayList<Long> gyroT = new ArrayList<>();
     private ArrayList<Float> gyroX = new ArrayList<>();
     private ArrayList<Float> gyroY = new ArrayList<>();
     private ArrayList<Float> gyroZ = new ArrayList<>();
 
+    // Orientation
+    private ArrayList<Long> orientT = new ArrayList<>();
+    private ArrayList<Float> orientX = new ArrayList<>();
+    private ArrayList<Float> orientY = new ArrayList<>();
+    private ArrayList<Float> orientZ = new ArrayList<>();
+
+    // Rotation Vector
+    private ArrayList<Long> rotT = new ArrayList<>();
+    private ArrayList<Float> rotX = new ArrayList<>();
+    private ArrayList<Float> rotY = new ArrayList<>();
+    private ArrayList<Float> rotZ = new ArrayList<>();
+
+
     // Sensors
     private SensorManager mSensorManager;
     private Sensor mAccel;
+    private Sensor mMag;
+    private Sensor mLAccel;
     private Sensor mGyro;
+    private Sensor mOrient;
+    private Sensor mRot;
 
     // Sensor variables
     private boolean start = false;
@@ -88,7 +122,11 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         // Create the listeners for each sensor type
         mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mMag = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mLAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
 
         // Set Labels
         currentLabel = (TextView) findViewById(R.id.currentActivity);
@@ -128,8 +166,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         if (start) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 getAcceleration(event);
+            } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                getMagnetometer(event);
+            } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+                getLinearAcceleration(event);
             } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
                 getGyroscope(event);
+            } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+                getRotationVector(event);
             }
         }
     }
@@ -141,9 +185,38 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         // Record the values
         if (start) {
+            accelT.add(event.timestamp);
             accelX.add(accX);
             accelY.add(accY);
             accelZ.add(accZ);
+        }
+    }
+
+    private void getMagnetometer(SensorEvent event) {
+        float magnetX = event.values[0];
+        float magnetY = event.values[1];
+        float magnetZ = event.values[2];
+
+        //Record the values
+        if (start) {
+            magT.add(event.timestamp);
+            magX.add(magnetX);
+            magY.add(magnetY);
+            magZ.add(magnetZ);
+        }
+    }
+
+    private void getLinearAcceleration(SensorEvent event) {
+        float linearAccX = event.values[0];
+        float linearAccY = event.values[1];
+        float linearAccZ = event.values[2];
+
+        //Record the values
+        if (start) {
+            lAccelT.add(event.timestamp);
+            lAccelX.add(linearAccX);
+            lAccelY.add(linearAccY);
+            lAccelZ.add(linearAccZ);
         }
     }
 
@@ -154,9 +227,24 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         // Record the values
         if (start) {
+            gyroT.add(event.timestamp);
             gyroX.add(gyX);
             gyroY.add(gyY);
             gyroZ.add(gyZ);
+        }
+    }
+
+    private void getRotationVector(SensorEvent event) {
+        float rotVecX = event.values[0];
+        float rotVecY = event.values[1];
+        float rotVecZ = event.values[2];
+
+        // Record the values
+        if (start) {
+            rotT.add(event.timestamp);
+            rotX.add(rotVecX);
+            rotY.add(rotVecY);
+            rotZ.add(rotVecZ);
         }
     }
 
@@ -169,6 +257,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         super.onResume();
         mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mLAccel, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mMag, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mRot, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
@@ -188,9 +279,16 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             e.printStackTrace();
         }
 
-        //accel
-        for (int i = 0; i < accelX.size(); i++) {
-            String accel = Float.toString(accelX.get(i)) + ", " +
+        // Accelerometer
+        try {
+            outputStream.write("Accelerometer\n".getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < accelT.size(); i++) {
+            String accel = Long.toString(accelT.get(i)) + ", " +
+                    Float.toString(accelX.get(i)) + ", " +
                     Float.toString(accelY.get(i)) + ", " +
                     Float.toString(accelZ.get(i)) + "\n";
             System.out.println(accel);
@@ -200,6 +298,88 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 e.printStackTrace();
             }
         }
+
+        // Magnetometer
+        try {
+            outputStream.write("Magnetometer\n".getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < magT.size(); i++) {
+            String mag = Long.toString(magT.get(i)) + ", " +
+                    Float.toString(magX.get(i)) + ", " +
+                    Float.toString(magY.get(i)) + ", " +
+                    Float.toString(magZ.get(i)) + "\n";
+            System.out.println(mag);
+            try {
+                outputStream.write(mag.getBytes());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Linear Accelerometer
+        try {
+            outputStream.write("Linear Accelerometer\n".getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < lAccelT.size(); i++) {
+            String lAccel = Long.toString(lAccelT.get(i)) + ", " +
+                    Float.toString(lAccelX.get(i)) + ", " +
+                    Float.toString(lAccelY.get(i)) + ", " +
+                    Float.toString(lAccelZ.get(i)) + "\n";
+            System.out.println(lAccel);
+            try {
+                outputStream.write(lAccel.getBytes());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Gyroscope
+        try {
+            outputStream.write("Gyroscope\n".getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < gyroT.size(); i++) {
+            String gyro = Long.toString(gyroT.get(i)) + ", " +
+                    Float.toString(gyroX.get(i)) + ", " +
+                    Float.toString(gyroY.get(i)) + ", " +
+                    Float.toString(gyroZ.get(i)) + "\n";
+            System.out.println(gyro);
+            try {
+                outputStream.write(gyro.getBytes());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Rotation Vector
+        try {
+            outputStream.write("Rotation Vector\n".getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < rotT.size(); i++) {
+            String rot = Long.toString(rotT.get(i)) + ", " +
+                    Float.toString(rotX.get(i)) + ", " +
+                    Float.toString(rotY.get(i)) + ", " +
+                    Float.toString(rotZ.get(i)) + "\n";
+            System.out.println(rot);
+            try {
+                outputStream.write(rot.getBytes());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
+
+
 }
 
