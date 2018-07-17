@@ -21,7 +21,10 @@ import android.widget.TextView;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.tasks.Task;
 import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataClient;
+import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
@@ -40,6 +43,9 @@ import java.util.ArrayList;
 
 public class MainActivity extends WearableActivity implements SensorEventListener {
 
+    private static final String SENSOR_ACCEL = "sensor.accel";
+    private static final String SENSOR_GYRO = "sensor.gyro";
+    private static final String SENSOR_ORIENT = "sensor.orient";
     // CSV files
     private BufferedWriter bw = null;
 
@@ -47,6 +53,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
     FileOutputStream outputStream;
+    private DataClient mDataClient;
 
     // Arrays to hold sensor data
     private ArrayList<Float> accelX = new ArrayList<>();
@@ -187,19 +194,32 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        String accel = "";
+        String gyro = "";
+        String orient = "";
         //accel
         for (int i = 0; i < accelX.size(); i++) {
-            String accel = Float.toString(accelX.get(i)) + ", " +
+            accel = accel.concat(Float.toString(accelX.get(i)) + ", " +
                     Float.toString(accelY.get(i)) + ", " +
-                    Float.toString(accelZ.get(i)) + "\n";
-            System.out.println(accel);
+                    Float.toString(accelZ.get(i)) + "\n");
             try {
                 outputStream.write(accel.getBytes());
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+
+        for (int i = 0; i < gyroX.size(); i++) {
+            gyro = gyro.concat(Float.toString(gyroX.get(i)) + ", " +
+                    Float.toString(gyroY.get(i)) + ", " +
+                    Float.toString(gyroZ.get(i)) + "\n");
+        }
+        PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sensor");
+        putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
+        putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
+        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+        putDataReq.setUrgent();
+        Task<DataItem> putDataTask = mDataClient.putDataItem(putDataReq);
     }
 }
 

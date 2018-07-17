@@ -10,12 +10,24 @@ import android.widget.TextView;
 import android.content.BroadcastReceiver;
 import android.os.Environment;
 
+import com.google.android.gms.wearable.DataClient;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Wearable;
+
 import java.io.File;
 import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Calendar;
 
-public class MainActivity extends AppCompatActivity {
-    private String filename = "sensor_data.txt";
+public class MainActivity extends AppCompatActivity implements DataClient.OnDataChangedListener{
+
+    private static final String SENSOR_ACCEL = "sensor.accel";
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
 
@@ -24,15 +36,6 @@ public class MainActivity extends AppCompatActivity {
     private String headerAccelZ = "\n accel Z: ";
 
     FileOutputStream outputStream;
-    ArrayList accelXArray;
-    ArrayList accelYArray;
-    ArrayList accelZArray;
-
-    private TextView mAccelX;
-    private TextView mAccelY;
-    private TextView mAccelZ;
-
-    BroadcastReceiver dataReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,68 +43,45 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mAccelX = (TextView) findViewById(R.id.accelX);
-        mAccelY = (TextView) findViewById(R.id.accelY);
-        mAccelZ = (TextView) findViewById(R.id.accelZ);
-
-        accelXArray = new ArrayList();
-        accelYArray = new ArrayList();
-        accelZArray = new ArrayList();
-
-
-        file = new File(path, filename);
     }
 
     @Override
-    protected void onStart() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("GET_DATA");
+    protected void onResume() {
+        super.onResume();
+        Wearable.getDataClient(this).addListener(this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Wearable.getDataClient(this).removeListener(this);
+    }
+
+    @Override
+    public void onDataChanged(DataEventBuffer dataEvents) {
+        Date d = Calendar.getInstance().getTime();
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        String date = df.format(d);
+        file = new File(path, date);
         try{
             outputStream = new FileOutputStream(file);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        dataReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent != null) {
-                    accelXArray.add(intent.getFloatExtra("accelX", 0));
-                    accelYArray.add(intent.getFloatExtra("accelY", 0));
-                    accelZArray.add(intent.getFloatExtra("accelZ", 0));
 
-                    if (accelXArray.size() >= 50) {
-                        try {
-                            for (int i = 0; i < accelXArray.size(); i++ ) {
-                                Log.d("sunjae", "writing");
-                                outputStream.write(headerAccelX.getBytes());
-                                outputStream.write(String.valueOf(accelXArray.get(i)).getBytes());
-                                outputStream.write(headerAccelY.getBytes());
-                                outputStream.write(String.valueOf(accelYArray.get(i)).getBytes());
-                                outputStream.write(headerAccelZ.getBytes());
-                                outputStream.write(String.valueOf(accelZArray.get(i)).getBytes());
-                            }
-                            accelXArray.clear();
-                            accelYArray.clear();
-                            accelZArray.clear();
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
-
+        for (DataEvent event : dataEvents) {
+            if (event.getType() == DataEvent.TYPE_CHANGED) {
+                DataItem item = event.getDataItem();
+                if (item.getUri().getPath().compareTo("/sensor") == 0) {
+                    DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
+                    try {
+                        outputStream.write(dataMap.getString(SENSOR_ACCEL).getBytes());
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
+
                 }
             }
-        };
-        registerReceiver(dataReceiver, filter);
-
-        super.onStart();
+        }
     }
-
-    @Override
-    protected void onStop() {
-        unregisterReceiver(dataReceiver);
-        super.onStop();
-    }
-
 }
