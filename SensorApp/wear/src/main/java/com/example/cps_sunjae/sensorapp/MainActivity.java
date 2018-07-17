@@ -36,6 +36,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends WearableActivity implements SensorEventListener {
@@ -68,13 +69,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     // Textview
     TextView currentLabel;
-
-    //Veryify storage permissions
-    private static final int REQUEST_EXTERNAL_STORAGE = 1;
-    private static String[] PERMISSIONS_STORAGE = {
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-    };
 
     /**
      * Called when the activity is first created
@@ -117,6 +111,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                     }
                 }
         );
+
+//        // Check available sensors
+//        List<Sensor> deviceSensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
+//        for (int i = 0; i < deviceSensors.size(); i++) {
+//            System.out.println(deviceSensors.get(i));
+//        }
     }
 
     /**
