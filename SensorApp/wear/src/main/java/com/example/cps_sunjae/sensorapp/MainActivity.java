@@ -51,7 +51,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_ROT = "sensor.rot";
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ORIENT = "sensor.orient";
-
+    private static final int SENSING_DELAY = 20000;
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
@@ -100,6 +100,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float>gravX = new ArrayList<>();
     private ArrayList<Float>gravY = new ArrayList<>();
     private ArrayList<Float>gravZ = new ArrayList<>();
+
 
 
 
@@ -298,12 +299,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_FASTEST);
-        mSensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_FASTEST);
-        mSensorManager.registerListener(this, mLAccel, SensorManager.SENSOR_DELAY_FASTEST);
-        mSensorManager.registerListener(this, mMag, SensorManager.SENSOR_DELAY_FASTEST);
-        mSensorManager.registerListener(this, mRot, SensorManager.SENSOR_DELAY_FASTEST);
-        mSensorManager.registerListener(this, mGrav,SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, mAccel, SENSING_DELAY);
+        mSensorManager.registerListener(this, mGyro, SENSING_DELAY);
+        mSensorManager.registerListener(this, mLAccel, SENSING_DELAY);
+        mSensorManager.registerListener(this, mMag, SENSING_DELAY);
+        mSensorManager.registerListener(this, mRot, SENSING_DELAY);
+        mSensorManager.registerListener(this, mGrav, SENSING_DELAY);
     }
 
     @Override
