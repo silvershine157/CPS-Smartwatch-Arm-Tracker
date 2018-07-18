@@ -29,15 +29,11 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     private static final String SENSOR_MAG = "sensor.mag";
     private static final String SENSOR_lACCEL = "sensor.laccel";
     private static final String SENSOR_ROT = "sensor.rot";
+    private static final String SENSOR_GRAV = "sensor.grav";
+    private static final String SENSOR_ORIENT = "sensor.orient";
 
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     private File file;
-
-    private String headerAccelX = "\n accel X: ";
-    private String headerAccelY = "\n accel Y: ";
-    private String headerAccelZ = "\n accel Z: ";
-
-    FileOutputStream outputStream;
 
     TextView currentStatus;
 
@@ -118,6 +114,24 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                         f = new FileOutputStream(file);
                         pw = new PrintWriter(f);
                         pw.print(dataMap.getString(SENSOR_MAG));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_grav.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_GRAV));
+                        pw.flush();
+                        f.close();
+                        pw.close();
+
+                        filename = date.concat("_orient.txt");
+                        file = new File(path, filename);
+                        f = new FileOutputStream(file);
+                        pw = new PrintWriter(f);
+                        pw.print(dataMap.getString(SENSOR_ORIENT));
                         pw.flush();
                         f.close();
                         pw.close();

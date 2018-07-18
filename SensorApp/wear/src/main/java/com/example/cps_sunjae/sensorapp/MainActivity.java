@@ -50,7 +50,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_lACCEL = "sensor.laccel";
     private static final String SENSOR_ROT = "sensor.rot";
     private static final String SENSOR_GRAV = "sensor.grav";
-
     private static final String SENSOR_ORIENT = "sensor.orient";
 
     // Arrays to hold sensor data
