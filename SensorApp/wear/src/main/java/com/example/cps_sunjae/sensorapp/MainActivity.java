@@ -51,7 +51,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_ROT = "sensor.rot";
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ORIENT = "sensor.orient";
-    private static final int SENSING_DELAY = 20000;
+    private static final int SENSING_DELAY = SensorManager.SENSOR_DELAY_GAME;
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
