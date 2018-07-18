@@ -52,7 +52,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_GRAV = "sensor.grav";
 
     private static final String SENSOR_ORIENT = "sensor.orient";
-    
+
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
@@ -84,6 +84,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float> orientY = new ArrayList<>();
     private ArrayList<Float> orientZ = new ArrayList<>();
 
+    // Used to calculate orientation
+    private final float[] mAccelerometerReading = new float[3];
+    private final float[] mMagnetometerReading = new float[3];
+    private final float[] mRotationMatrix = new float[9];
+    private final float[] mOrientationAngles = new float[3];
+
     // Rotation Vector
     private ArrayList<Long> rotT = new ArrayList<>();
     private ArrayList<Float> rotX = new ArrayList<>();
@@ -95,6 +101,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float>gravX = new ArrayList<>();
     private ArrayList<Float>gravY = new ArrayList<>();
     private ArrayList<Float>gravZ = new ArrayList<>();
+
+
 
 
     // Sensors
@@ -200,6 +208,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelX.add(accX);
             accelY.add(accY);
             accelZ.add(accZ);
+            System.arraycopy(event.values, 0, mAccelerometerReading, 0, mAccelerometerReading.length);
         }
     }
 
@@ -214,6 +223,16 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             magX.add(magnetX);
             magY.add(magnetY);
             magZ.add(magnetZ);
+            System.arraycopy(event.values,0, mMagnetometerReading, 0, mMagnetometerReading.length);
+
+            // Compute Orientation
+            mSensorManager.getRotationMatrix(mRotationMatrix, null, mAccelerometerReading, mMagnetometerReading);
+            mSensorManager.getOrientation(mRotationMatrix, mOrientationAngles);
+
+            orientT.add(event.timestamp);
+            orientX.add(mOrientationAngles[0]);
+            orientY.add(mOrientationAngles[1]);
+            orientZ.add(mOrientationAngles[2]);
         }
     }
 
@@ -356,7 +375,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                     Float.toString(gravZ.get(i)) + "\n");
         }
 
-        System.out.println(grav);
+        // Orientation
+        for (int i = 0; i < orientT.size(); i++) {
+            orient = orient.concat(Long.toString(orientT.get(i)) + ", " +
+                    Float.toString(orientX.get(i)) + ", " +
+                    Float.toString(orientY.get(i)) + ", " +
+                    Float.toString(orientZ.get(i)) + "\n");
+        }
 
         Log.d("testdrive", "sending data");
 
@@ -367,6 +392,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
         putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
         putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
+        putDataMapReq.getDataMap().putString(SENSOR_ORIENT, orient);
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
 
@@ -392,6 +418,10 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         rotX.clear();
         rotY.clear();
         rotZ.clear();
+        orientT.clear();
+        orientX.clear();
+        orientY.clear();
+        orientZ.clear();
 
         Log.d("testdrive", "sent Data");
     }
