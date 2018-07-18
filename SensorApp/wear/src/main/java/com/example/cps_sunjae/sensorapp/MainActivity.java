@@ -327,60 +327,62 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         // Accelerometer
         for (int i = 0; i < accelT.size(); i++) {
-            accel = accel.concat(Long.toString(accelT.get(i)) + ", " +
-                    Float.toString(accelX.get(i)) + ", " +
-                    Float.toString(accelY.get(i)) + ", " +
+            accel = accel.concat(Long.toString(accelT.get(i)) + "\t" +
+                    Float.toString(accelX.get(i)) + "\t" +
+                    Float.toString(accelY.get(i)) + "\t" +
                     Float.toString(accelZ.get(i)) + "\n");
         }
 
         //GyroScope
         for (int i = 0; i < gyroT.size(); i++) {
-            gyro = gyro.concat(Long.toString(gyroT.get(i)) + ", " +
-                    Float.toString(gyroX.get(i)) + ", " +
-                    Float.toString(gyroY.get(i)) + ", " +
+            gyro = gyro.concat(Long.toString(gyroT.get(i)) + "\t" +
+                    Float.toString(gyroX.get(i)) + "\t" +
+                    Float.toString(gyroY.get(i)) + "\t" +
                     Float.toString(gyroZ.get(i)) + "\n");
         }
 
         //Mag
         for (int i = 0; i < magT.size(); i++) {
-            mag = mag.concat(Long.toString(magT.get(i)) + ", " +
-                    Float.toString(magX.get(i)) + ", " +
-                    Float.toString(magY.get(i)) + ", " +
+            mag = mag.concat(Long.toString(magT.get(i)) + "\t" +
+                    Float.toString(magX.get(i)) + "\t" +
+                    Float.toString(magY.get(i)) + "\t" +
                     Float.toString(magZ.get(i)) + "\n");
 
         }
 
         // Linear Accelerometer
         for (int i = 0; i < lAccelT.size(); i++) {
-            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + ", " +
-                    Float.toString(lAccelX.get(i)) + ", " +
-                    Float.toString(lAccelY.get(i)) + ", " +
+            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + "\t" +
+                    Float.toString(lAccelX.get(i)) + "\t" +
+                    Float.toString(lAccelY.get(i)) + "\t" +
                     Float.toString(lAccelZ.get(i)) + "\n");
         }
 
         // Rotation Vector
         for (int i = 0; i < rotT.size(); i++) {
-            rot = rot.concat(Long.toString(rotT.get(i)) + ", " +
-                    Float.toString(rotX.get(i)) + ", " +
-                    Float.toString(rotY.get(i)) + ", " +
+            rot = rot.concat(Long.toString(rotT.get(i)) + "\t" +
+                    Float.toString(rotX.get(i)) + "\t" +
+                    Float.toString(rotY.get(i)) + "\t" +
                     Float.toString(rotZ.get(i)) + "\n");
         }
 
         // Gravity
         for (int i = 0; i < gravT.size(); i++) {
-            grav = grav.concat(Long.toString(gravT.get(i)) + ", " +
-                    Float.toString(gravX.get(i)) + ", " +
-                    Float.toString(gravY.get(i)) + ", " +
+            grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
+                    Float.toString(gravX.get(i)) + "\t" +
+                    Float.toString(gravY.get(i)) + "\t" +
                     Float.toString(gravZ.get(i)) + "\n");
         }
 
         // Orientation
         for (int i = 0; i < orientT.size(); i++) {
-            orient = orient.concat(Long.toString(orientT.get(i)) + ", " +
-                    Float.toString(orientX.get(i)) + ", " +
-                    Float.toString(orientY.get(i)) + ", " +
+            orient = orient.concat(Long.toString(orientT.get(i)) + "\t" +
+                    Float.toString(orientX.get(i)) + "\t" +
+                    Float.toString(orientY.get(i)) + "\t" +
                     Float.toString(orientZ.get(i)) + "\n");
         }
+
+        System.out.println(orient);
 
         Log.d("testdrive", "sending data");
 
