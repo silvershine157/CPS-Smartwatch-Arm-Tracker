@@ -51,7 +51,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_ROT = "sensor.rot";
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ORIENT = "sensor.orient";
-    private static final int SENSING_DELAY = SensorManager.SENSOR_DELAY_GAME;
+    private static final int SENSING_DELAY = SensorManager.SENSOR_DELAY_FASTEST;
+//    private static final int SENSING_DELAY = 20000;
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
@@ -104,7 +105,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
 
 
-
     // Sensors
     private SensorManager mSensorManager;
     private Sensor mAccel;
@@ -152,17 +152,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         findViewById(R.id.btn_start).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
-                        start = true;
-                        currentLabel.setText(recording);
+                        startSensing();
                     }
                 }
         );
         findViewById(R.id.btn_stop).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
-                        start = false;
-                        currentLabel.setText(stop);
-                        sendSensorData();
+                        stopSensing();
                     }
                 }
         );
@@ -174,6 +171,31 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 //        }
     }
 
+    public void startSensing() {
+        if (!start) {
+            start = true;
+
+            mSensorManager.registerListener(this, mAccel, SENSING_DELAY);
+            mSensorManager.registerListener(this, mGyro, SENSING_DELAY);
+            mSensorManager.registerListener(this, mMag, SENSING_DELAY);
+
+//            mSensorManager.registerListener(this, mLAccel, SENSING_DELAY);
+//            mSensorManager.registerListener(this, mRot, SENSING_DELAY);
+//            mSensorManager.registerListener(this, mGrav, SENSING_DELAY);
+        }
+    }
+
+    public void stopSensing() {
+        if (start) {
+            start = false;
+
+            mSensorManager.unregisterListener(this);
+            sendSensorData();
+
+            currentLabel.setText(stop);
+        }
+    }
+
     /**
      * Called each time the sensor changes. Fills buffers to be written to the CSV.
      *
@@ -181,6 +203,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
      */
     public void onSensorChanged(SensorEvent event) {
         if (start) {
+            currentLabel.setText(recording);
+
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 getAcceleration(event);
             } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
@@ -299,18 +323,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mAccel, SENSING_DELAY);
-        mSensorManager.registerListener(this, mGyro, SENSING_DELAY);
-        mSensorManager.registerListener(this, mLAccel, SENSING_DELAY);
-        mSensorManager.registerListener(this, mMag, SENSING_DELAY);
-        mSensorManager.registerListener(this, mRot, SENSING_DELAY);
-        mSensorManager.registerListener(this, mGrav, SENSING_DELAY);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mSensorManager.unregisterListener(this);
+        stopSensing();
     }
 
 
@@ -351,37 +369,37 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         }
 
-        // Linear Accelerometer
-        for (int i = 0; i < lAccelT.size(); i++) {
-            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + "\t" +
-                    Float.toString(lAccelX.get(i)) + "\t" +
-                    Float.toString(lAccelY.get(i)) + "\t" +
-                    Float.toString(lAccelZ.get(i)) + "\n");
-        }
-
-        // Rotation Vector
-        for (int i = 0; i < rotT.size(); i++) {
-            rot = rot.concat(Long.toString(rotT.get(i)) + "\t" +
-                    Float.toString(rotX.get(i)) + "\t" +
-                    Float.toString(rotY.get(i)) + "\t" +
-                    Float.toString(rotZ.get(i)) + "\n");
-        }
-
-        // Gravity
-        for (int i = 0; i < gravT.size(); i++) {
-            grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
-                    Float.toString(gravX.get(i)) + "\t" +
-                    Float.toString(gravY.get(i)) + "\t" +
-                    Float.toString(gravZ.get(i)) + "\n");
-        }
-
-        // Orientation
-        for (int i = 0; i < orientT.size(); i++) {
-            orient = orient.concat(Long.toString(orientT.get(i)) + "\t" +
-                    Float.toString(orientX.get(i)) + "\t" +
-                    Float.toString(orientY.get(i)) + "\t" +
-                    Float.toString(orientZ.get(i)) + "\n");
-        }
+//        // Linear Accelerometer
+//        for (int i = 0; i < lAccelT.size(); i++) {
+//            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + "\t" +
+//                    Float.toString(lAccelX.get(i)) + "\t" +
+//                    Float.toString(lAccelY.get(i)) + "\t" +
+//                    Float.toString(lAccelZ.get(i)) + "\n");
+//        }
+//
+//        // Rotation Vector
+//        for (int i = 0; i < rotT.size(); i++) {
+//            rot = rot.concat(Long.toString(rotT.get(i)) + "\t" +
+//                    Float.toString(rotX.get(i)) + "\t" +
+//                    Float.toString(rotY.get(i)) + "\t" +
+//                    Float.toString(rotZ.get(i)) + "\n");
+//        }
+//
+//        // Gravity
+//        for (int i = 0; i < gravT.size(); i++) {
+//            grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
+//                    Float.toString(gravX.get(i)) + "\t" +
+//                    Float.toString(gravY.get(i)) + "\t" +
+//                    Float.toString(gravZ.get(i)) + "\n");
+//        }
+//
+//        // Orientation
+//        for (int i = 0; i < orientT.size(); i++) {
+//            orient = orient.concat(Long.toString(orientT.get(i)) + "\t" +
+//                    Float.toString(orientX.get(i)) + "\t" +
+//                    Float.toString(orientY.get(i)) + "\t" +
+//                    Float.toString(orientZ.get(i)) + "\n");
+//        }
 
         System.out.println(orient);
 
