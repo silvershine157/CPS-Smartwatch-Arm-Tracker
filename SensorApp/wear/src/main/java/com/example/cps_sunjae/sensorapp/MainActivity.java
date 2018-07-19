@@ -22,6 +22,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataClient;
 import com.google.android.gms.wearable.DataItem;
@@ -405,9 +406,15 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Log.d("testdrive", "sending data");
 
         PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sensor");
-        putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
-        putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
-        putDataMapReq.getDataMap().putString(SENSOR_MAG, mag);
+        Asset accelAsset = Asset.createFromBytes(accel.getBytes());
+        Asset gyroAsset = Asset.createFromBytes(gyro.getBytes());
+        Asset magAsset = Asset.createFromBytes(mag.getBytes());
+        putDataMapReq.getDataMap().putAsset(SENSOR_ACCEL, accelAsset);
+        putDataMapReq.getDataMap().putAsset(SENSOR_GYRO, gyroAsset);
+        putDataMapReq.getDataMap().putAsset(SENSOR_MAG,magAsset);
+//        putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
+//        putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
+//        putDataMapReq.getDataMap().putString(SENSOR_MAG, mag);
 //        putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
 //        putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
 //        putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
