@@ -400,8 +400,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 //                    Float.toString(orientY.get(i)) + "\t" +
 //                    Float.toString(orientZ.get(i)) + "\n");
 //        }
-
-        System.out.println(orient);
+//        System.out.println(orient);
 
         Log.d("testdrive", "sending data");
 
@@ -409,15 +408,15 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
         putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
         putDataMapReq.getDataMap().putString(SENSOR_MAG, mag);
-        putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
-        putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
-        putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
-        putDataMapReq.getDataMap().putString(SENSOR_ORIENT, orient);
+//        putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
+//        putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
+//        putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
+//        putDataMapReq.getDataMap().putString(SENSOR_ORIENT, orient);
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
 
         Task<DataItem> putDataTask = Wearable.getDataClient(this).putDataItem(putDataReq);
-        Log.d("testdrive", accel);
+//        Log.d("testdrive", accel);
         accelT.clear();
         accelX.clear();
         accelY.clear();
