@@ -112,6 +112,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private Sensor mMag;
     private Sensor mLAccel;
     private Sensor mGyro;
+    private Sensor gRot;
     private Sensor mOrient;
     private Sensor mRot;
     private Sensor mGrav;
@@ -145,6 +146,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mGrav = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        gRot = mSensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
 
         // Set Labels
         currentLabel = (TextView) findViewById(R.id.currentActivity);
@@ -179,9 +181,10 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             mSensorManager.registerListener(this, mAccel, SENSING_DELAY);
             mSensorManager.registerListener(this, mGyro, SENSING_DELAY);
             mSensorManager.registerListener(this, mMag, SENSING_DELAY);
+            mSensorManager.registerListener(this,gRot, SENSING_DELAY);
 
 //            mSensorManager.registerListener(this, mLAccel, SENSING_DELAY);
-//            mSensorManager.registerListener(this, mRot, SENSING_DELAY);
+            mSensorManager.registerListener(this, mRot, SENSING_DELAY);
 //            mSensorManager.registerListener(this, mGrav, SENSING_DELAY);
         }
     }
@@ -204,7 +207,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
      */
     public void onSensorChanged(SensorEvent event) {
         if (start) {
-            currentLabel.setText(recording);
+//            currentLabel.setText(recording);
 
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 getAcceleration(event);
@@ -218,8 +221,19 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 getRotationVector(event);
             } else if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
                 getGravity(event);
+            } else if (event.sensor.getType() == Sensor.TYPE_GAME_ROTATION_VECTOR) {
+                getGameRotation(event);
             }
         }
+    }
+
+    private void getGameRotation(SensorEvent event) {
+        float rotX = event.values[0];
+        float rotY = event.values[1];
+        float rotZ = event.values[2];
+//
+//        currentLabel.setText(String.format("%.3f", rotX) + " ," + String.format("%.3f", rotY) + " ," +
+//                String.format("%.3f", rotZ) + " ,");
     }
 
     private void getAcceleration(SensorEvent event) {
@@ -251,8 +265,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             System.arraycopy(event.values,0, mMagnetometerReading, 0, mMagnetometerReading.length);
 
             // Compute Orientation
-            mSensorManager.getRotationMatrix(mRotationMatrix, null, mAccelerometerReading, mMagnetometerReading);
-            mSensorManager.getOrientation(mRotationMatrix, mOrientationAngles);
+//            mSensorManager.getRotationMatrix(mRotationMatrix, null, mAccelerometerReading, mMagnetometerReading);
+//            mSensorManager.getOrientation(mRotationMatrix, mOrientationAngles);
 
             orientT.add(event.timestamp);
             orientX.add(mOrientationAngles[0]);
@@ -300,6 +314,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             rotX.add(rotVecX);
             rotY.add(rotVecY);
             rotZ.add(rotVecZ);
+
+//            currentLabel.setText(String.format("%.3f", rotVecX) + " ," + String.format("%.3f", rotVecY) + " ," +
+//                    String.format("%.3f", rotVecZ) + " ,");
+
+            gravT.add(event.timestamp);
+            calcGravity(event.values);
         }
     }
 
@@ -315,6 +335,37 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             gravY.add(gravityY);
             gravZ.add(gravityZ);
         }
+    }
+
+    private void calcGravity(float[] rotVector) {
+        float[] gravity = {0,0,(float)-9.81, 0};
+        float temp[] = new float[4];
+        float result[] = new float[4];
+
+        float[] rotVectorInverse = new float[4];
+        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
+                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
+        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
+        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
+        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
+        rotVectorInverse[3] = rotVector[3] / inverseDenom;
+
+        hamiltonProduct(rotVector, gravity, temp);
+        hamiltonProduct(temp, rotVectorInverse, result);
+
+        gravX.add(result[0]);
+        gravY.add(result[1]);
+        gravZ.add(result[2]);
+
+        currentLabel.setText(String.format("%.3f", result[0]) + " ," + String.format("%.3f", result[1]) + " ," +
+                String.format("%.3f", result[2]) + " ,");
+    }
+
+    private void hamiltonProduct(float[] x, float[] y, float[] result) {
+        result[0] = (x[3]*y[0]) + (x[0]*y[3]) - (x[1]*y[2]) + (x[2]*y[1]);
+        result[1] = (x[3]*y[1]) + (x[0]*y[2]) + (x[1]*y[3]) - (x[2]*y[0]);
+        result[2] = (x[3]*y[2]) - (x[0]*y[1]) + (x[1]*y[0]) + (x[2]*y[3]);
+        result[3] = (x[3]*y[3]) - (x[0]*y[0]) - (x[1]*y[1]) - (x[2]*y[2]);
     }
 
     @Override
