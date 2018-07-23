@@ -52,6 +52,9 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     private static final String SENSOR_ACCEL = "sensor.accel";
     private static final String SENSOR_GYRO = "sensor.gyro";
     private static final String SENSOR_MAG = "sensor.mag";
+    private static final String SENSOR_lACCEL = "sensor.laccel";
+    private static final String SENSOR_GRAV = "sensor.grav";
+    private static final String SENSOR_ROTVEC = "sensor.rotvec";
 
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
@@ -202,6 +205,9 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                         loadFromAsset("_accel.txt", dataMap.getAsset(SENSOR_ACCEL));
                         loadFromAsset("_gyro.txt", dataMap.getAsset(SENSOR_GYRO));
                         loadFromAsset("_mag.txt", dataMap.getAsset(SENSOR_MAG));
+                        loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
+                        loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
+                        loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
 
                         Log.d("testdrive", "data written");
                         currentStatus.setText("data written");

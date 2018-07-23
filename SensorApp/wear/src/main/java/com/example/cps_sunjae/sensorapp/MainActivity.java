@@ -49,6 +49,8 @@ import java.util.List;
 public class MainActivity extends WearableActivity implements SensorEventListener,
         MessageClient.OnMessageReceivedListener {
 
+    private static final int CALIBRATE_MAX = 20;
+
     private static final String TAG = "SensorAppW";
     private static final String START_SENSING_PATH = "/start-sensing";
     private static final String STOP_SENSING_PATH = "/stop-sensing";
@@ -56,6 +58,10 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_ACCEL = "sensor.accel";
     private static final String SENSOR_GYRO = "sensor.gyro";
     private static final String SENSOR_MAG = "sensor.mag";
+    private static final String SENSOR_lACCEL = "sensor.laccel";
+    private static final String SENSOR_GRAV = "sensor.grav";
+    private static final String SENSOR_ROTVEC = "sensor.rotvec";
+
     private static final int SENSING_DELAY = SensorManager.SENSOR_DELAY_FASTEST;
 //    private static final int SENSING_DELAY = 20000;
 
@@ -96,6 +102,11 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private final float[] mRotationMatrix = new float[9];
     private final float[] mOrientationAngles = new float[3];
 
+    // Used to calculate mean gravity
+    private float[] gravitySum = {0,0,0};
+    private float gravityMean = 0;
+    private int calibrateCounter = 0;
+
     // Rotation Vector
     private ArrayList<Long> rotT = new ArrayList<>();
     private ArrayList<Float> rotX = new ArrayList<>();
@@ -112,7 +123,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private SensorManager mSensorManager;
     private Sensor mAccel;
     private Sensor mMag;
-    private Sensor mLAccel;
     private Sensor mGyro;
     private Sensor gRot;
     private Sensor mOrient;
@@ -146,7 +156,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         // Create the listeners for each sensor type
         mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMag = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mLAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mGyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         mGrav = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
@@ -221,27 +230,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 getAcceleration(event);
             } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
                 getMagnetometer(event);
-            } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-                getLinearAcceleration(event);
             } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
                 getGyroscope(event);
             } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
                 getRotationVector(event);
             } else if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
                 getGravity(event);
-            } else if (event.sensor.getType() == Sensor.TYPE_GAME_ROTATION_VECTOR) {
-                getGameRotation(event);
             }
         }
-    }
-
-    private void getGameRotation(SensorEvent event) {
-        float rotX = event.values[0];
-        float rotY = event.values[1];
-        float rotZ = event.values[2];
-//
-//        currentLabel.setText(String.format("%.3f", rotX) + " ," + String.format("%.3f", rotY) + " ," +
-//                String.format("%.3f", rotZ) + " ,");
     }
 
     private void getAcceleration(SensorEvent event) {
@@ -256,6 +252,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelY.add(accY);
             accelZ.add(accZ);
             System.arraycopy(event.values, 0, mAccelerometerReading, 0, mAccelerometerReading.length);
+        }
+
+        if (calibrateCounter < CALIBRATE_MAX) {
+            gravitySum[0] += accX;
+            gravitySum[1] += accY;
+            gravitySum[2] += accZ;
+            calibrateCounter ++;
         }
     }
 
@@ -283,18 +286,16 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
     }
 
-    private void getLinearAcceleration(SensorEvent event) {
-        float linearAccX = event.values[0];
-        float linearAccY = event.values[1];
-        float linearAccZ = event.values[2];
+    private void getLinearAcceleration(float[] rotVec, float[] accel) {
+        float[] globalAcc = localToGlobal(rotVec, accel);
+        lAccelX.add(globalAcc[0]);
+        lAccelY.add(globalAcc[1]);
+        lAccelZ.add(globalAcc[2] - gravityMean);
 
-        //Record the values
-        if (start) {
-            lAccelT.add(event.timestamp);
-            lAccelX.add(linearAccX);
-            lAccelY.add(linearAccY);
-            lAccelZ.add(linearAccZ);
-        }
+        currentLabel.setText(String.format("%.3f", globalAcc[0]) + " ," + String.format("%.3f", globalAcc[1]) + " ," +
+        String.format("%.3f", globalAcc[2] - gravityMean));
+
+//        Log.v("testdrive", String.valueOf(gravityMean));
     }
 
     private void getGyroscope(SensorEvent event) {
@@ -328,6 +329,45 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
             gravT.add(event.timestamp);
             calcGravity(event.values);
+
+            if (calibrateCounter >= CALIBRATE_MAX) {
+                if (gravityMean == 0) {
+                    float[] meanLocalGravity =
+                            {gravitySum[0]/CALIBRATE_MAX, gravitySum[1]/CALIBRATE_MAX, gravitySum[2]/CALIBRATE_MAX, 0};
+
+                    float[] globalGrav = localToGlobal(event.values, meanLocalGravity);
+
+                    gravityMean = globalGrav[2];
+                    Log.v("testdrive", String.valueOf(gravityMean));
+                }
+
+                lAccelT.add(event.timestamp);
+                getLinearAcceleration(event.values,
+                new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
+            }
+//            if (gravityMean == 0) {
+//                float[] globalGrav = localToGlobal(event.values,
+//                        new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
+//
+//                if (globalGrav[2]>=9) {
+//                    gravitySet.add(globalGrav[2]);
+//                }
+//
+//
+//                float gravitySum = 0;
+//                if (gravitySet.size() >= 20) {
+//                    for(float g : gravitySet) {
+//                        Log.v("testdrive", String.valueOf(g));
+//                        gravitySum += g;
+//                    }
+//
+//                    gravityMean = gravitySum / gravitySet.size();
+//                }
+//            } else {
+//                lAccelT.add(event.timestamp);
+//                getLinearAcceleration(event.values,
+//                        new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
+//            }
         }
     }
 
@@ -346,7 +386,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     private void calcGravity(float[] rotVector) {
-        float[] gravity = {0,0,(float)-9.81, 0};
+        float[] gravity = {0,0,(float)9.81, 0};
         float temp[] = new float[4];
         float result[] = new float[4];
 
@@ -365,8 +405,26 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravY.add(result[1]);
         gravZ.add(result[2]);
 
-        currentLabel.setText(String.format("%.3f", result[0]) + " ," + String.format("%.3f", result[1]) + " ," +
-                String.format("%.3f", result[2]) + " ,");
+//        currentLabel.setText(String.format("%.3f", result[0]) + " ," + String.format("%.3f", result[1]) + " ," +
+//                String.format("%.3f", result[2]) + " ,");
+    }
+
+    private float[] localToGlobal(float[] rotVector, float[] accel) {
+        float temp[] = new float[4];
+        float result[] = new float[4];
+
+        float[] rotVectorInverse = new float[4];
+        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
+                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
+        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
+        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
+        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
+        rotVectorInverse[3] = rotVector[3] / inverseDenom;
+
+        hamiltonProduct(rotVectorInverse, accel, temp);
+        hamiltonProduct(temp, rotVector, result);
+
+        return new float[]{result[0], result[1], result[2]};
     }
 
     private void hamiltonProduct(float[] x, float[] y, float[] result) {
@@ -431,29 +489,29 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         }
 
-//        // Linear Accelerometer
-//        for (int i = 0; i < lAccelT.size(); i++) {
-//            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + "\t" +
-//                    Float.toString(lAccelX.get(i)) + "\t" +
-//                    Float.toString(lAccelY.get(i)) + "\t" +
-//                    Float.toString(lAccelZ.get(i)) + "\n");
-//        }
-//
-//        // Rotation Vector
-//        for (int i = 0; i < rotT.size(); i++) {
-//            rot = rot.concat(Long.toString(rotT.get(i)) + "\t" +
-//                    Float.toString(rotX.get(i)) + "\t" +
-//                    Float.toString(rotY.get(i)) + "\t" +
-//                    Float.toString(rotZ.get(i)) + "\n");
-//        }
-//
-//        // Gravity
-//        for (int i = 0; i < gravT.size(); i++) {
-//            grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
-//                    Float.toString(gravX.get(i)) + "\t" +
-//                    Float.toString(gravY.get(i)) + "\t" +
-//                    Float.toString(gravZ.get(i)) + "\n");
-//        }
+        // Linear Accelerometer
+        for (int i = 0; i < lAccelT.size(); i++) {
+            lAccel = lAccel.concat(Long.toString(lAccelT.get(i)) + "\t" +
+                    Float.toString(lAccelX.get(i)) + "\t" +
+                    Float.toString(lAccelY.get(i)) + "\t" +
+                    Float.toString(lAccelZ.get(i)) + "\n");
+        }
+
+        // Rotation Vector
+        for (int i = 0; i < rotT.size(); i++) {
+            rot = rot.concat(Long.toString(rotT.get(i)) + "\t" +
+                    Float.toString(rotX.get(i)) + "\t" +
+                    Float.toString(rotY.get(i)) + "\t" +
+                    Float.toString(rotZ.get(i)) + "\n");
+        }
+
+        // Gravity
+        for (int i = 0; i < gravT.size(); i++) {
+            grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
+                    Float.toString(gravX.get(i)) + "\t" +
+                    Float.toString(gravY.get(i)) + "\t" +
+                    Float.toString(gravZ.get(i)) + "\n");
+        }
 //
 //        // Orientation
 //        for (int i = 0; i < orientT.size(); i++) {
@@ -470,16 +528,18 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Asset accelAsset = Asset.createFromBytes(accel.getBytes());
         Asset gyroAsset = Asset.createFromBytes(gyro.getBytes());
         Asset magAsset = Asset.createFromBytes(mag.getBytes());
+        Asset gravAsset = Asset.createFromBytes(grav.getBytes());
+        Asset lAccelAsset = Asset.createFromBytes(lAccel.getBytes());
+        Asset rotVecAsset = Asset.createFromBytes(rot.getBytes());
+
         putDataMapReq.getDataMap().putAsset(SENSOR_ACCEL, accelAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_GYRO, gyroAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_MAG,magAsset);
-//        putDataMapReq.getDataMap().putString(SENSOR_ACCEL,accel);
-//        putDataMapReq.getDataMap().putString(SENSOR_GYRO, gyro);
-//        putDataMapReq.getDataMap().putString(SENSOR_MAG, mag);
-//        putDataMapReq.getDataMap().putString(SENSOR_lACCEL, lAccel);
-//        putDataMapReq.getDataMap().putString(SENSOR_ROT, rot);
-//        putDataMapReq.getDataMap().putString(SENSOR_GRAV, grav);
-//        putDataMapReq.getDataMap().putString(SENSOR_ORIENT, orient);
+        putDataMapReq.getDataMap().putAsset(SENSOR_GRAV,gravAsset);
+        putDataMapReq.getDataMap().putAsset(SENSOR_lACCEL,lAccelAsset);
+        putDataMapReq.getDataMap().putAsset(SENSOR_ROTVEC,rotVecAsset);
+
+
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
 
