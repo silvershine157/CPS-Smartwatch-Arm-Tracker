@@ -3,6 +3,7 @@ package com.example.cps_sunjae.sensorapp;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -26,6 +27,8 @@ import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataClient;
 import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.MessageClient;
+import com.google.android.gms.wearable.MessageEvent;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
@@ -43,17 +46,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class MainActivity extends WearableActivity implements SensorEventListener {
+public class MainActivity extends WearableActivity implements SensorEventListener,
+        MessageClient.OnMessageReceivedListener {
+
+    private static final String TAG = "SensorAppW";
+    private static final String START_SENSING_PATH = "/start-sensing";
+    private static final String STOP_SENSING_PATH = "/stop-sensing";
 
     private static final String SENSOR_ACCEL = "sensor.accel";
     private static final String SENSOR_GYRO = "sensor.gyro";
     private static final String SENSOR_MAG = "sensor.mag";
-    private static final String SENSOR_lACCEL = "sensor.laccel";
-    private static final String SENSOR_ROT = "sensor.rot";
-    private static final String SENSOR_GRAV = "sensor.grav";
-    private static final String SENSOR_ORIENT = "sensor.orient";
     private static final int SENSING_DELAY = SensorManager.SENSOR_DELAY_FASTEST;
 //    private static final int SENSING_DELAY = 20000;
+
     // Arrays to hold sensor data
     // Accelerometer
     private ArrayList<Long> accelT = new ArrayList<>();
@@ -103,9 +108,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float>gravY = new ArrayList<>();
     private ArrayList<Float>gravZ = new ArrayList<>();
 
-
-
-
     // Sensors
     private SensorManager mSensorManager;
     private Sensor mAccel;
@@ -124,6 +126,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     // Textview
     TextView currentLabel;
+
+    GoogleApiClient mGoogleApiClient;
 
     /**
      * Called when the activity is first created
@@ -166,12 +170,16 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                     }
                 }
         );
+    }
 
-//        // Check available sensors
-//        List<Sensor> deviceSensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
-//        for (int i = 0; i < deviceSensors.size(); i++) {
-//            System.out.println(deviceSensors.get(i));
-//        }
+    @Override
+    public void onMessageReceived(MessageEvent messageEvent) {
+        //Log.d(TAG, "onMessageReceived: " + messageEvent);
+        if (messageEvent.getPath().equals(START_SENSING_PATH)) {
+            startSensing();
+        } else if (messageEvent.getPath().equals(STOP_SENSING_PATH)) {
+            stopSensing();
+        }
     }
 
     public void startSensing() {
@@ -375,6 +383,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     protected void onResume() {
         super.onResume();
+
+        Wearable.getMessageClient(this).addListener(this);
     }
 
     @Override
