@@ -229,7 +229,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
         // make new File
         File dir = new File(path, date);
         dir.mkdirs();
-        String filename = date + "/" + type;
+        String filename = date + "/" + date + type;
         File file = new File(path, filename);
         try {
             FileOutputStream f = new FileOutputStream(file);
