@@ -251,7 +251,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelX.add(accX);
             accelY.add(accY);
             accelZ.add(accZ);
-            System.arraycopy(event.values, 0, mAccelerometerReading, 0, mAccelerometerReading.length);
         }
 
         if (calibrateCounter < CALIBRATE_MAX) {
@@ -273,16 +272,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             magX.add(magnetX);
             magY.add(magnetY);
             magZ.add(magnetZ);
-            System.arraycopy(event.values,0, mMagnetometerReading, 0, mMagnetometerReading.length);
-
-            // Compute Orientation
-//            mSensorManager.getRotationMatrix(mRotationMatrix, null, mAccelerometerReading, mMagnetometerReading);
-//            mSensorManager.getOrientation(mRotationMatrix, mOrientationAngles);
-
-            orientT.add(event.timestamp);
-            orientX.add(mOrientationAngles[0]);
-            orientY.add(mOrientationAngles[1]);
-            orientZ.add(mOrientationAngles[2]);
         }
     }
 
