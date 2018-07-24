@@ -49,7 +49,7 @@ import java.util.List;
 public class MainActivity extends WearableActivity implements SensorEventListener,
         MessageClient.OnMessageReceivedListener {
 
-    private static final int CALIBRATE_MAX = 20;
+    private static final int CALIBRATE_MAX = 100;
 
     private static final String TAG = "SensorAppW";
     private static final String START_SENSING_PATH = "/start-sensing";
@@ -251,7 +251,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelX.add(accX);
             accelY.add(accY);
             accelZ.add(accZ);
-            System.arraycopy(event.values, 0, mAccelerometerReading, 0, mAccelerometerReading.length);
+//            System.arraycopy(event.values, 0, mAccelerometerReading, 0, mAccelerometerReading.length);
         }
 
         if (calibrateCounter < CALIBRATE_MAX) {
@@ -332,6 +332,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
             if (calibrateCounter >= CALIBRATE_MAX) {
                 if (gravityMean == 0) {
+                    currentLabel.setText("Calibrating...");
                     float[] meanLocalGravity =
                             {gravitySum[0]/CALIBRATE_MAX, gravitySum[1]/CALIBRATE_MAX, gravitySum[2]/CALIBRATE_MAX, 0};
 
