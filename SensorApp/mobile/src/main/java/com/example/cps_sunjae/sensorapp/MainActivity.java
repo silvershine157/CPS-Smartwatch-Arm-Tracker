@@ -4,17 +4,22 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.provider.Settings;
 import android.support.annotation.WorkerThread;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Layout;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.os.Environment;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -84,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                     startActivity(intent);
                 } else {
                     Log.d(TAG, "no package");
+                    Toast.makeText(getApplicationContext(), "Need " + pkg, Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -100,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
         try {
             for (int i = 0; i < mApps.size(); i++) {
-                if (mApps.get(i).activityInfo.packageName.startsWith(pkg)) {
+                if (mApps.get(i).activityInfo.packageName.equals(pkg)) {
                     isExist = true;
                     break;
                 }
