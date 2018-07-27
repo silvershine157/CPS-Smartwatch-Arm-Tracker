@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.Settings;
@@ -46,6 +47,7 @@ import java.util.Date;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity implements DataClient.OnDataChangedListener{
@@ -210,15 +212,17 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                     DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
                     try {
                         loadFromAsset("_accel.txt", dataMap.getAsset(SENSOR_ACCEL));
-                        loadFromAsset("_gyro.txt", dataMap.getAsset(SENSOR_GYRO));
-                        loadFromAsset("_mag.txt", dataMap.getAsset(SENSOR_MAG));
                         loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
                         loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
                         loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
-                        loadFromAsset("_orient.txt", dataMap.getAsset(SENSOR_ORIENT));
 
                         Log.d("testdrive", "data written");
                         currentStatus.setText("data written");
+                        Random rand = new Random();
+                        int r = rand.nextInt(256);
+                        int g = rand.nextInt(256);
+                        int b = rand.nextInt(256);
+                        currentStatus.setBackgroundColor(Color.rgb(r,g,b));
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
