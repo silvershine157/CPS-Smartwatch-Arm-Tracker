@@ -50,7 +50,11 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity implements DataClient.OnDataChangedListener{
+public class MainActivity extends AppCompatActivity
+    /*
+        implements DataClient.OnDataChangedListener{
+        */
+{
 
     private static final String TAG = "SensorApp";
     private static final String START_SENSING_PATH = "/start-sensing";
@@ -67,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
-    TextView currentStatus;
+    static TextView currentStatus;
     Button btn, btn_dwn;
 
     @Override
@@ -76,6 +80,10 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Intent intent = new Intent(getApplicationContext(), SensorService.class);
+        startService(intent);
+
         currentStatus = (TextView) findViewById(R.id.status);
         btn = findViewById(R.id.btn);
         btn_dwn = findViewById(R.id.btn_downloads);
@@ -98,6 +106,14 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
             }
         });
         checkPermission();
+    }
+
+    public static void makeText(String str) {
+        currentStatus.setText(str);
+    }
+
+    public static void setColor(int r, int g, int b) {
+        currentStatus.setBackgroundColor(Color.rgb(r, g, b));
     }
 
     public boolean checkPackage(String pkg) {
@@ -191,15 +207,16 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     @Override
     protected void onResume() {
         super.onResume();
-        Wearable.getDataClient(this).addListener(this);
+
+        //Wearable.getDataClient(this).addListener(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        Wearable.getDataClient(this).removeListener(this);
+        //Wearable.getDataClient(this).removeListener(this);
     }
-
+/*
     @Override
     public void onDataChanged(DataEventBuffer dataEvents) {
         Log.d("testdrive", "data changed");
@@ -233,7 +250,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
             }
         }
     }
-
+*/
     private void writeToFile(String type, String data) {
         // get current time
         Date d = Calendar.getInstance().getTime();
