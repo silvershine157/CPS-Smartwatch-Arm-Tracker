@@ -257,6 +257,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         float gameZ = event.values[2];
         float gameW = event.values[3];
 
+        // Get euler angles from game rotation vector
         /*
         float[] rotationMatrix = new float[9];
         float[] orientationAngles = new float[3];
@@ -388,7 +389,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
         // Game Rotation Vector
         for (int i = 0; i < grotvT.size(); i++) {
-            grotv = rot.concat(grotvT.get(i) + "\t" +
+            grotv = grotv.concat(grotvT.get(i) + "\t" +
                     grotvX.get(i) + "\t" +
                     grotvY.get(i) + "\t" +
                     grotvZ.get(i) + "\t" +
