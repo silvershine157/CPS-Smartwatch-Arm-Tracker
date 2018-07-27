@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ROTVEC = "sensor.rotvec";
     private static final String SENSOR_ORIENT = "sensor.orient";
+    private static final String SENSOR_GROTV = "sensor.grotv";
 
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
@@ -215,6 +216,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                         loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
                         loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
                         loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
+                        loadFromAsset("_gameRotVec.txt", dataMap.getAsset(SENSOR_GROTV));
 
                         Log.d("testdrive", "data written");
                         currentStatus.setText("data written");
