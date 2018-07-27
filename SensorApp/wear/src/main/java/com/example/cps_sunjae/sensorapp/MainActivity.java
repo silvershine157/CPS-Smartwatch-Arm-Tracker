@@ -49,7 +49,7 @@ import java.util.List;
 public class MainActivity extends WearableActivity implements SensorEventListener,
         MessageClient.OnMessageReceivedListener {
 
-    private static final int CALIBRATE_MAX = 100;
+    private static final int CALIBRATE_MAX = 1000;
 
     private static final String TAG = "SensorAppW";
     private static final String START_SENSING_PATH = "/start-sensing";
@@ -103,15 +103,17 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private final float[] mOrientationAngles = new float[3];
 
     // Used to calculate mean gravity
-    private float[] gravitySum = {0,0,0};
-    private float gravityMean = 0;
+    private float[] biasSum = {0,0,0};
+    private float biasMean[] = new float[] {0,0,0};
     private int calibrateCounter = 0;
+    private float[] bias = new float[] { 0,0,0 };
 
     // Rotation Vector
     private ArrayList<Long> rotT = new ArrayList<>();
     private ArrayList<Float> rotX = new ArrayList<>();
     private ArrayList<Float> rotY = new ArrayList<>();
     private ArrayList<Float> rotZ = new ArrayList<>();
+    private ArrayList<Float> rotTheta = new ArrayList<>();
 
     // Gravity
     private ArrayList<Long> gravT = new ArrayList<>();
@@ -254,9 +256,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
 
         if (calibrateCounter < CALIBRATE_MAX) {
-            gravitySum[0] += accX;
-            gravitySum[1] += accY;
-            gravitySum[2] += accZ;
+            biasSum[0] += accX;
+            biasSum[1] += accY;
+            biasSum[2] += accZ;
             calibrateCounter ++;
         }
     }
@@ -276,13 +278,41 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     private void getLinearAcceleration(float[] rotVec, float[] accel) {
-        float[] globalAcc = localToGlobal(rotVec, accel);
-        lAccelX.add(globalAcc[0]);
-        lAccelY.add(globalAcc[1]);
-        lAccelZ.add(globalAcc[2] - gravityMean);
+        // a' = (c+1)a
+        // a' = ca
+        // a = a'/c
+        // a = a'/(c+1)
+        // linear Accel = a - gravity
 
-        currentLabel.setText(String.format("%.3f", globalAcc[0]) + " ," + String.format("%.3f", globalAcc[1]) + " ," +
-        String.format("%.3f", globalAcc[2] - gravityMean));
+        // a' =
+
+        float[] a = new float[] {
+                accel[0]-(bias[0]),
+                accel[1]-(bias[1]),
+                accel[2]-(bias[2]),
+                0
+        };
+
+        float[] la = new float[] {
+                a[0] - gravX.get(gravX.size()-1),
+                a[1] - gravY.get(gravY.size()-1),
+                a[2] - gravZ.get(gravZ.size()-1)
+        };
+
+        lAccelX.add(la[0]);
+        lAccelY.add(la[1]);
+        lAccelZ.add(la[2]);
+
+
+//        float[] globalAcc = localToGlobal(rotVec, a);
+//        lAccelX.add(globalAcc[0]);
+//        lAccelY.add(globalAcc[1]);
+//        lAccelZ.add(globalAcc[2] - (float)9.80665);
+
+        currentLabel.setText(String.format("%.3f", la[0]) + " ," + String.format("%.3f", la[1]) + " ," +
+        String.format("%.3f", la[2]));
+//        currentLabel.setText(String.format("%.3f", c[0]) + " ," + String.format("%.3f", c[1]) + " ," +
+//                String.format("%.3f", c[2]));
 
 //        Log.v("testdrive", String.valueOf(gravityMean));
     }
@@ -305,6 +335,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         float rotVecX = event.values[0];
         float rotVecY = event.values[1];
         float rotVecZ = event.values[2];
+        float rotVecTheta = event.values[3];
 
         // Record the values
         if (start) {
@@ -312,6 +343,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             rotX.add(rotVecX);
             rotY.add(rotVecY);
             rotZ.add(rotVecZ);
+            rotTheta.add(rotVecTheta);
 
 //            currentLabel.setText(String.format("%.3f", rotVecX) + " ," + String.format("%.3f", rotVecY) + " ," +
 //                    String.format("%.3f", rotVecZ) + " ,");
@@ -320,44 +352,17 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             calcGravity(event.values);
 
             if (calibrateCounter >= CALIBRATE_MAX) {
-                if (gravityMean == 0) {
+                if (biasMean[2] == 0) {
                     currentLabel.setText("Calibrating...");
-                    float[] meanLocalGravity =
-                            {gravitySum[0]/CALIBRATE_MAX, gravitySum[1]/CALIBRATE_MAX, gravitySum[2]/CALIBRATE_MAX, 0};
-
-                    float[] globalGrav = localToGlobal(event.values, meanLocalGravity);
-
-                    gravityMean = globalGrav[2];
-                    Log.v("testdrive", String.valueOf(gravityMean));
+                    biasMean =
+                            new float[] {biasSum[0]/CALIBRATE_MAX, biasSum[1]/CALIBRATE_MAX, biasSum[2]/CALIBRATE_MAX, 0};
+                    bias = calcBias();
                 }
 
                 lAccelT.add(event.timestamp);
                 getLinearAcceleration(event.values,
                 new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
             }
-//            if (gravityMean == 0) {
-//                float[] globalGrav = localToGlobal(event.values,
-//                        new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
-//
-//                if (globalGrav[2]>=9) {
-//                    gravitySet.add(globalGrav[2]);
-//                }
-//
-//
-//                float gravitySum = 0;
-//                if (gravitySet.size() >= 20) {
-//                    for(float g : gravitySet) {
-//                        Log.v("testdrive", String.valueOf(g));
-//                        gravitySum += g;
-//                    }
-//
-//                    gravityMean = gravitySum / gravitySet.size();
-//                }
-//            } else {
-//                lAccelT.add(event.timestamp);
-//                getLinearAcceleration(event.values,
-//                        new float[]{accelX.get(accelT.size()-1),accelY.get(accelT.size()-1),accelZ.get(accelT.size()-1), 0});
-//            }
         }
     }
 
@@ -375,8 +380,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
     }
 
-    private void calcGravity(float[] rotVector) {
-        float[] gravity = {0,0,(float)9.81, 0};
+    private float[] calcGravity(float[] rotVector) {
+        float[] gravity = {0,0,(float)9.80665, 0};
         float temp[] = new float[4];
         float result[] = new float[4];
 
@@ -395,8 +400,39 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravY.add(result[1]);
         gravZ.add(result[2]);
 
+        return new float[]{result[0], result[1], result[2]};
+
 //        currentLabel.setText(String.format("%.3f", result[0]) + " ," + String.format("%.3f", result[1]) + " ," +
 //                String.format("%.3f", result[2]) + " ,");
+    }
+
+    private float[] calcBias() {
+        // a' = ca + a
+
+        float[] rotVector = new float[] {
+                rotX.get(rotX.size()-1),
+                rotY.get(rotX.size()-1),
+                rotZ.get(rotX.size()-1),
+                rotTheta.get(rotX.size()-1)
+        };
+
+        // a
+        float[] localGravity = calcGravity(rotVector);
+
+//         calc ca
+//        float[] ca =new float[] {
+//                biasMean[0] - localGravity[0],
+//                biasMean[1] - localGravity[1],
+//                biasMean[2] - localGravity[2]
+//        };
+
+        float[] c = new float[]{
+                biasMean[0]/localGravity[0],
+                biasMean[1]/localGravity[1],
+                biasMean[2]/localGravity[2]
+        };
+
+        return c;
     }
 
     private float[] localToGlobal(float[] rotVector, float[] accel) {
@@ -559,6 +595,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         orientX.clear();
         orientY.clear();
         orientZ.clear();
+        biasMean = new float[]{0,0,0};
+        calibrateCounter = 0;
+        biasSum = new float[]{0,0,0};
 
         Log.d("testdrive", "sent Data");
     }
