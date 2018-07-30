@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.Settings;
@@ -46,9 +47,14 @@ import java.util.Date;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity implements DataClient.OnDataChangedListener{
+public class MainActivity extends AppCompatActivity
+    /*
+        implements DataClient.OnDataChangedListener{
+        */
+{
 
     private static final String TAG = "SensorApp";
     private static final String START_SENSING_PATH = "/start-sensing";
@@ -61,10 +67,11 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ROTVEC = "sensor.rotvec";
     private static final String SENSOR_ORIENT = "sensor.orient";
+    private static final String SENSOR_GROTV = "sensor.grotv";
 
     private File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
-    TextView currentStatus;
+    static TextView currentStatus;
     Button btn, btn_dwn;
 
     @Override
@@ -73,6 +80,10 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Intent intent = new Intent(getApplicationContext(), SensorService.class);
+        startService(intent);
+
         currentStatus = (TextView) findViewById(R.id.status);
         btn = findViewById(R.id.btn);
         btn_dwn = findViewById(R.id.btn_downloads);
@@ -95,6 +106,14 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
             }
         });
         checkPermission();
+    }
+
+    public static void makeText(String str) {
+        currentStatus.setText(str);
+    }
+
+    public static void setColor(int r, int g, int b) {
+        currentStatus.setBackgroundColor(Color.rgb(r, g, b));
     }
 
     public boolean checkPackage(String pkg) {
@@ -188,15 +207,16 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
     @Override
     protected void onResume() {
         super.onResume();
-        Wearable.getDataClient(this).addListener(this);
+
+        //Wearable.getDataClient(this).addListener(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        Wearable.getDataClient(this).removeListener(this);
+        //Wearable.getDataClient(this).removeListener(this);
     }
-
+/*
     @Override
     public void onDataChanged(DataEventBuffer dataEvents) {
         Log.d("testdrive", "data changed");
@@ -210,15 +230,18 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
                     DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
                     try {
                         loadFromAsset("_accel.txt", dataMap.getAsset(SENSOR_ACCEL));
-                        loadFromAsset("_gyro.txt", dataMap.getAsset(SENSOR_GYRO));
-                        loadFromAsset("_mag.txt", dataMap.getAsset(SENSOR_MAG));
                         loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
                         loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
                         loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
-                        loadFromAsset("_orient.txt", dataMap.getAsset(SENSOR_ORIENT));
+                        loadFromAsset("_gameRotVec.txt", dataMap.getAsset(SENSOR_GROTV));
 
                         Log.d("testdrive", "data written");
                         currentStatus.setText("data written");
+                        Random rand = new Random();
+                        int r = rand.nextInt(256);
+                        int g = rand.nextInt(256);
+                        int b = rand.nextInt(256);
+                        currentStatus.setBackgroundColor(Color.rgb(r,g,b));
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -227,7 +250,7 @@ public class MainActivity extends AppCompatActivity implements DataClient.OnData
             }
         }
     }
-
+*/
     private void writeToFile(String type, String data) {
         // get current time
         Date d = Calendar.getInstance().getTime();
