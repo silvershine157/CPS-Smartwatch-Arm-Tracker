@@ -38,9 +38,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
 
-public class SensorService extends Service
-        implements DataClient.OnDataChangedListener {
-    //{
+public class SensorService extends Service implements DataClient.OnDataChangedListener {
 
     private static final String TAG = "SensorAppService";
 
@@ -126,7 +124,6 @@ public class SensorService extends Service
                         loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
                         loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
                         loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
-                        loadFromAsset("_gameRotVec.txt", dataMap.getAsset(SENSOR_GROTV));
                         Log.d("testdrive", "data written");
                         MainActivity.makeText("data written");
                         Random rand = new Random();
@@ -143,7 +140,6 @@ public class SensorService extends Service
                         }
                         Notification notification = builder.build();
                         NotificationManager nm = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
-                        //nm.cancel(1);
                         nm.notify(2, notification);
                         MainActivity.setColor(r, g, b);
                     } catch (Exception e) {
