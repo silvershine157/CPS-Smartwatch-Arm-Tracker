@@ -71,10 +71,13 @@ public class SensorService extends Service
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         createNotificationChannel();
-        Notification notification = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("In Background service")
-                .build();
+                .setContentTitle("In Background service");
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setPriority(NotificationCompat.PRIORITY_MAX);
+        }
+        Notification notification = builder.build();
         startForeground(1, notification);
         return super.onStartCommand(intent, flags, startId);
     }
@@ -96,9 +99,10 @@ public class SensorService extends Service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = getString(R.string.channel_name);
             String description = getString(R.string.channel_description);
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
+            channel.setVibrationPattern(new long[] {1000, 1000});
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
@@ -125,17 +129,22 @@ public class SensorService extends Service
                         loadFromAsset("_gameRotVec.txt", dataMap.getAsset(SENSOR_GROTV));
                         Log.d("testdrive", "data written");
                         MainActivity.makeText("data written");
-                        Notification notification = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                                .setContentTitle("Data Written")
-                                .build();
-                        NotificationManager nm = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
-                        //nm.cancel(1);
-                        nm.notify(1, notification);
                         Random rand = new Random();
                         int r = rand.nextInt(256);
                         int g = rand.nextInt(256);
                         int b = rand.nextInt(256);
+                        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
+                                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                                .setContentTitle("Data Written")
+                                .setDefaults(Notification.DEFAULT_ALL)
+                                .setColor(Color.rgb(r, g, b));
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                            builder.setPriority(NotificationCompat.PRIORITY_MAX);
+                        }
+                        Notification notification = builder.build();
+                        NotificationManager nm = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+                        //nm.cancel(1);
+                        nm.notify(2, notification);
                         MainActivity.setColor(r, g, b);
                     } catch (Exception e) {
                         e.printStackTrace();
