@@ -147,7 +147,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     public void startSensing() {
         if (!start) {
             start = true;
-            currentLabel.setText("Recording...");
+            currentLabel.setText(recording);
             mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_FASTEST);
             mSensorManager.registerListener(this, mRot, SensorManager.SENSOR_DELAY_FASTEST);
         }
@@ -324,7 +324,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         @Override
         protected Void doInBackground(Void... args) {
             sendSensorData();
-            currentLabel.setText(stop);
             return null;
         }
     }
@@ -419,6 +418,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravZ.clear();
 
         Log.d("testdrive", "sent Data");
+
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                currentLabel.setText(stop);
+            }
+        });
     }
 }
 

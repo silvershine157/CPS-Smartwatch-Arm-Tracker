@@ -70,8 +70,9 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
     public int onStartCommand(Intent intent, int flags, int startId) {
         createNotificationChannel();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("In Background service");
+                .setSmallIcon(R.drawable.noticon)
+                .setContentTitle("In Background service")
+                .setDefaults(Notification.DEFAULT_VIBRATE);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             builder.setPriority(NotificationCompat.PRIORITY_MAX);
         }
@@ -131,9 +132,9 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
                         int g = rand.nextInt(256);
                         int b = rand.nextInt(256);
                         NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                                .setSmallIcon(R.drawable.noticon)
                                 .setContentTitle("Data Written")
-                                .setDefaults(Notification.DEFAULT_ALL)
+                                .setDefaults(Notification.DEFAULT_VIBRATE)
                                 .setColor(Color.rgb(r, g, b));
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                             builder.setPriority(NotificationCompat.PRIORITY_MAX);
