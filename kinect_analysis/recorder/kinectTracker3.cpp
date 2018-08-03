@@ -32,6 +32,10 @@ int H_MIN, H_MAX, S_MIN, S_MAX, V_MIN, V_MAX;
 bool recording;
 bool stopped;
 
+// body tracking
+BOOLEAN tracked;
+Joint joints[JointType_Count];
+
 // Kinect constants
 const int d_width = 512;
 const int d_height = 424;
@@ -70,7 +74,9 @@ bool initKinect() {
 		sensor->get_CoordinateMapper(&mapper);
 		sensor->Open();
 		sensor->OpenMultiSourceFrameReader(
-			FrameSourceTypes::FrameSourceTypes_Depth | FrameSourceTypes::FrameSourceTypes_Color,
+			FrameSourceTypes::FrameSourceTypes_Depth 
+			| FrameSourceTypes::FrameSourceTypes_Color
+			| FrameSourceTypes::FrameSourceTypes_Body,
 			&reader);
 		return reader;
 	}
@@ -108,15 +114,40 @@ void getRgbData(IMultiSourceFrame* frame) {
 	if (colorframe) colorframe->Release();
 }
 
+void getBodyData(IMultiSourceFrame* frame) {
+	IBodyFrame* bodyframe;
+	IBodyFrameReference* frameref = NULL;
+	DetectionResult dr;
+	frame->get_BodyFrameReference(&frameref);
+	frameref->AcquireFrame(&bodyframe);
+	if (frameref) frameref->Release();
+
+	if (!bodyframe) return;
+
+	IBody* body[6] = { 0 };
+	bodyframe->GetAndRefreshBodyData(6, body);
+	for (int i = 0; i < 6; i++) {
+		body[i]->get_IsTracked(&tracked);
+		if (tracked) {
+			body[i]->GetJoints(JointType_Count, joints);
+			break;
+		}
+	}
+
+	if (bodyframe) bodyframe->Release();
+}
+
 
 void getKinectData() {
 	IMultiSourceFrame* frame = NULL;
 	if (SUCCEEDED(reader->AcquireLatestFrame(&frame))) {
 		getDepthData(frame);
 		getRgbData(frame);
+		getBodyData(frame);
 	}
 	if (frame) frame->Release();
 }
+
 
 void controlClickCallback(int event, int x, int y, int flags, void* userdata) {
 	if (event == EVENT_LBUTTONDOWN) {
@@ -133,15 +164,38 @@ void controlClickCallback(int event, int x, int y, int flags, void* userdata) {
 	}
 }
 
+
 void makeControlPanel() {
+	string recButtonText("Click to record");
 	Mat3b img(300, 300, Vec3b(0, 255, 0));
 	record_button = Rect(0, 0, img.cols, 50);
 	ctrl_canvas = Mat3b(img.rows + record_button.height, img.cols, Vec3b(0, 0, 0));
 	ctrl_canvas(record_button) = Vec3b(200, 200, 200);
+	putText(ctrl_canvas(record_button), recButtonText, Point(record_button.width*0.25,
+		record_button.height*0.7), FONT_HERSHEY_PLAIN, 1, Scalar(0, 0, 0));
 	img.copyTo(ctrl_canvas(Rect(0, record_button.height, img.cols, img.rows)));
 	namedWindow(controlWindowName);
 	setMouseCallback(controlWindowName, controlClickCallback);
 	imshow(controlWindowName, ctrl_canvas);
+}
+
+
+void drawArm(Mat& fullRGBimg) {
+	const int jtCnt = 3;
+	CameraSpacePoint cameraPoints[jtCnt];
+	ColorSpacePoint colorPoints[jtCnt];
+	cameraPoints[0] = joints[JointType_ShoulderLeft].Position;
+	cameraPoints[1] = joints[JointType_ElbowLeft].Position;
+	cameraPoints[2] = joints[JointType_WristLeft].Position;
+	mapper->MapCameraPointsToColorSpace(jtCnt, cameraPoints, jtCnt, colorPoints);
+	Point ls(int(colorPoints[0].X), int(colorPoints[0].Y));
+	Point le(int(colorPoints[1].X), int(colorPoints[1].Y));
+	Point lw(int(colorPoints[2].X), int(colorPoints[2].Y));
+	circle(fullRGBimg, ls, 10, Vec3b(0, 0, 255), 5);
+	circle(fullRGBimg, le, 10, Vec3b(255, 0, 255), 5);
+	circle(fullRGBimg, lw, 10, Vec3b(255, 255, 0), 5);
+	line(fullRGBimg, ls, le, Vec3b(255, 255, 255), 5);
+	line(fullRGBimg, le, lw, Vec3b(255, 255, 255), 5);
 }
 
 int main()
@@ -152,7 +206,6 @@ int main()
 
 	Mat fullRGBimg;
 	Mat HSVimg;
-	
 
 	//waitKey(0.1);
 
@@ -187,7 +240,9 @@ int main()
 				// write body data
 			}
 			else {
-				// draw body
+				if (tracked) {
+					drawArm(fullRGBimg);
+				}
 				if (marker && markerFound) {
 					// draw marker
 
@@ -208,7 +263,6 @@ int main()
 	catch (cv::Exception & e) {
 		cerr << e.msg << endl; // output exception message
 	}
-
 	// save recorded data to txt file
     return 0;
 }
