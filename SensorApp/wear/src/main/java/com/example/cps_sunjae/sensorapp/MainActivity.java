@@ -116,7 +116,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 
         // Set Labels
-        currentLabel = (TextView) findViewById(R.id.currentActivity);
+        currentLabel = findViewById(R.id.currentActivity);
 
         // Set Buttons
         findViewById(R.id.btn_start).setOnClickListener(
@@ -310,14 +310,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     protected void onResume() {
         super.onResume();
-
         Wearable.getMessageClient(this).addListener(this);
     }
 
     @Override
     protected void onPause() {
-        super.onPause();
+        Wearable.getMessageClient(this).removeListener(this);
         stopSensing();
+        super.onPause();
     }
 
     private class SendTask extends AsyncTask<Void, Void, Void> {

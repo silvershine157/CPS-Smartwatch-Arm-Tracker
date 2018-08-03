@@ -159,8 +159,8 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
                     Log.d("testdrive", "data received");
                     MainActivity.makeText("data received");
                     DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
-                    //new WriteTask().execute(dataMap);
-                    write(dataMap);
+                    new WriteTask().execute(dataMap);
+                    //write(dataMap);
                 }
             }
         }
