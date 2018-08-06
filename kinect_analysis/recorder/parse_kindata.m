@@ -1,3 +1,4 @@
+clear
 rawdat = load('kindata.txt');
 kindata = kinDataTuple;
 for i = 1:size(rawdat, 1)
@@ -19,5 +20,5 @@ for i = 1:size(rawdat, 1)
     kdt.le = rawdat(i, 10:12);
     kdt.lw = rawdat(i, 13:15);
     kindata(i, 1) = kdt;
-    save kindata
+    save('kdat.mat', 'kindata')
 end
