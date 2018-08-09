@@ -1,11 +1,18 @@
 package com.example.cps_sunjae.sensorapp;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.wearable.activity.WearableActivity;
 import android.util.Log;
 import android.view.View;
@@ -21,6 +28,7 @@ import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 
@@ -37,6 +45,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ROTVEC = "sensor.rotvec";
     private static final String SENSOR_ORIENT = "sensor.orient";
+    private static final String RECORD = "record";
 
     private static final String recording = "Recording...";
     private static final String stop = "Stop";
@@ -92,6 +101,18 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private Sensor mAccel;
     private Sensor mRot;
 
+    // Audio Recorder
+    private final int[] sampleRates = new int[] {48000, 44100, 22050, 11025, 8000, 16000};
+    private final short[] audioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT};
+    private final short[] channelConfigs = new short[] {AudioFormat.CHANNEL_IN_MONO}; //AudioFormat.CHANNEL_IN_STEREO,
+    private int mSampleRate;
+    private short mAudioFormat, mChannelConfig;
+    private AudioRecord mRecorder;
+    private Thread mRecorderThread = null;
+    String recordData = "";
+    short recordTemp[] = new short[1024*1000];
+    private boolean isPlaying = false;
+
     // Sensor variables
     private boolean start = false;
 
@@ -123,24 +144,66 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 new Button.OnClickListener() {
                     public void onClick(View v) {
                         startSensing();
+                        startRecording();
                     }
                 }
         );
         findViewById(R.id.btn_stop).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
+                        stopRecording();
                         stopSensing();
                     }
                 }
         );
+
+        checkPermission();
+    }
+
+    public void checkPermission() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+        }
     }
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath().equals(START_SENSING_PATH)) {
             startSensing();
+            startRecording();
         } else if (messageEvent.getPath().equals(STOP_SENSING_PATH)) {
+            stopRecording();
             stopSensing();
+        }
+    }
+
+    public void startRecording() {
+        mRecorder = findRecorder();
+        if (mRecorder == null) {
+            Log.d(TAG, "null mRecorder");
+        }
+        mRecorder.startRecording();
+        isPlaying = true;
+        mRecorderThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0 ; isPlaying ; i++) {
+                    mRecorder.read(recordTemp, 1024*i, 1024);
+                }
+            }
+        });
+        mRecorderThread.start();
+    }
+
+    public void stopRecording() {
+        if (mRecorder != null) {
+            isPlaying = false;
+            mRecorder.stop();
+            mRecorder.release();
+            mRecorder = null;
+            mRecorderThread = null;
         }
     }
 
@@ -156,7 +219,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     public void stopSensing() {
         if (start) {
             start = false;
-
             mSensorManager.unregisterListener(this);
             currentLabel.setText("Sending...");
             new SendTask().execute();
@@ -320,6 +382,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         super.onPause();
     }
 
+    @Override
+    protected void onStop() {
+        Wearable.getMessageClient(this).removeListener(this);
+        stopSensing();
+        Log.d(TAG, "onStop()");
+        super.onStop();
+    }
+
     private class SendTask extends AsyncTask<Void, Void, Void> {
         @Override
         protected Void doInBackground(Void... args) {
@@ -384,12 +454,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Asset gravAsset = Asset.createFromBytes(grav.getBytes());
         Asset lAccelAsset = Asset.createFromBytes(lAccel.getBytes());
         Asset rotVecAsset = Asset.createFromBytes(rot.getBytes());
+        Asset recordAsset = Asset.createFromBytes(short2byte(recordTemp));
 
         putDataMapReq.getDataMap().putAsset(SENSOR_ACCEL, accelAsset);
 //        putDataMapReq.getDataMap().putAsset(SENSOR_GYRO, gyroAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_GRAV,gravAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_lACCEL,lAccelAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_ROTVEC,rotVecAsset);
+        putDataMapReq.getDataMap().putAsset(RECORD, recordAsset);
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
 
@@ -417,6 +489,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravY.clear();
         gravZ.clear();
 
+        recordData = "";
+        recordTemp = null;
+
         Log.d("testdrive", "sent Data");
 
         this.runOnUiThread(new Runnable() {
@@ -425,6 +500,42 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                 currentLabel.setText(stop);
             }
         });
+    }
+
+    private AudioRecord findRecorder() {
+        for (int rate : sampleRates) {
+            for (short format : audioFormats) {
+                for (short channel : channelConfigs) {
+                    try {
+                        int bufferSize = AudioRecord.getMinBufferSize(rate, channel, format);
+                        if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
+                            mSampleRate = rate;
+                            mAudioFormat = format;
+                            mChannelConfig = channel;
+                            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, mSampleRate, mChannelConfig, mAudioFormat, bufferSize);
+                            if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                                Log.d(TAG, "SampleRate : " + mSampleRate + ", AudioFormat : " + mAudioFormat + ", Channel : " + mChannelConfig);
+                                return recorder;
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
     }
 }
 
