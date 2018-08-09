@@ -137,19 +137,6 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    private class WriteTask extends AsyncTask<DataMap, Void, Void> {
-        @Override
-        protected Void doInBackground(DataMap... dataMaps) {
-            write(dataMaps[0]);
-            return null;
-        }
-    }
-
-    @Override
     public void onDataChanged(DataEventBuffer dataEvents) {
         Log.d("testdrive", "data changed");
         // get current time
@@ -171,7 +158,6 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
     }
 
     private void write(DataMap dataMap){
-
         try {
             loadFromAsset("_accel.txt", dataMap.getAsset(SENSOR_ACCEL));
             loadFromAsset("_grav.txt", dataMap.getAsset(SENSOR_GRAV));
@@ -238,26 +224,10 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
         }
     }
 
-    private short[] byte2short(byte[] bData) {
-
-        int byteArrsize = bData.length;
-
-        short[] bytes = new short[byteArrsize / 2];
-
-        for (int i = 0; i < byteArrsize / 2; i++) {
-            bytes[i] = (short)((short)(bData[i*2+1]<<8) + (short) bData[i*2]);
-        }
-
-        return bytes;
-
-    }
-
     private void loadFromAsset(final String fileType, Asset asset) {
-
         if (asset == null) {
             throw new IllegalArgumentException("Aset must be non-null");
         }
-
         try {
             Task<DataClient.GetFdForAssetResponse> task = Wearable.getDataClient(this).getFdForAsset(asset);
             task.addOnSuccessListener(new OnSuccessListener<DataClient.GetFdForAssetResponse>() {
@@ -268,7 +238,6 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
                         Log.v("testdrive", "Requestted an unkown Asset.");
                         return;
                     }
-
                     BufferedReader r = new BufferedReader(new InputStreamReader(assetInputStream));
                     StringBuilder str = new StringBuilder();
                     String line;
@@ -306,7 +275,6 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
             pw.flush();
             f.close();
             pw.close();
-
         } catch (Exception e) {
             Log.d(TAG, e.toString());
             e.printStackTrace();
@@ -344,24 +312,6 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
         Wearable.getMessageClient(this).sendMessage(node, STOP_SENSING_PATH, new byte[0]);
     }
 
-    @WorkerThread
-    private Collection<String> getNodes() {
-        HashSet<String> results = new HashSet<>();
-
-        Task<List<Node>> nodeListTask =
-                Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
-        try {
-            List<Node> nodes = Tasks.await(nodeListTask);
-            for (Node node : nodes) {
-                results.add(node.getId());
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "E: " + e);
-        }
-
-        return results;
-    }
-
     public void startRecording() {
         mRecorder = new MediaRecorder();
         mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -392,5 +342,53 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    private class WriteTask extends AsyncTask<DataMap, Void, Void> {
+        @Override
+        protected Void doInBackground(DataMap... dataMaps) {
+            write(dataMaps[0]);
+            return null;
+        }
+    }
+
+    private short[] byte2short(byte[] bData) {
+        int byteSize = bData.length;
+        short[] shorts;
+        if (byteSize % 2 != 0) {
+            shorts = new short[byteSize / 2 + 1];
+        } else {
+            shorts = new short[byteSize / 2];
+        }
+        for (int i = 0; i < byteSize / 2; i++) {
+            shorts[i] = (short)((short)(bData[i*2+1]<<8) + (short) bData[i*2]);
+        }
+        if (byteSize % 2 != 0) {
+            shorts[byteSize / 2] = (short)bData[byteSize - 1];
+        }
+        return shorts;
+    }
+
+    @WorkerThread
+    private Collection<String> getNodes() {
+        HashSet<String> results = new HashSet<>();
+
+        Task<List<Node>> nodeListTask =
+                Wearable.getNodeClient(getApplicationContext()).getConnectedNodes();
+        try {
+            List<Node> nodes = Tasks.await(nodeListTask);
+            for (Node node : nodes) {
+                results.add(node.getId());
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "E: " + e);
+        }
+
+        return results;
     }
 }

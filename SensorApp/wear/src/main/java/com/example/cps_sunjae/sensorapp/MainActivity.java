@@ -50,13 +50,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String recording = "Recording...";
     private static final String stop = "Stop";
 
-    // Calibration
-//    private static final float x_m = (float)1.0047;
-//    private static final float x_c = (float)0.2229;
-//    private static final float y_m = (float)1.0038;
-//    private static final float y_c = (float)0.0701;
-//    private static final float z_m = (float)1.0015;
-//    private static final float z_c = (float)-0.0942;
     private static final float x_m = (float)1;
     private static final float x_c = (float)0;
     private static final float y_m = (float)1;
@@ -103,7 +96,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     // Audio Recorder
     private final int[] sampleRates = new int[] {48000, 44100, 22050, 11025, 8000, 16000};
-    private final short[] audioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT};
+    private final short[] audioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT}; //AudioFormat.ENCODING_PCM_8BIT
     private final short[] channelConfigs = new short[] {AudioFormat.CHANNEL_IN_MONO}; //AudioFormat.CHANNEL_IN_STEREO,
     private int mSampleRate;
     private short mAudioFormat, mChannelConfig;
@@ -246,36 +239,17 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelY.add(accY);
             accelZ.add(accZ);
         }
-
-
-//        currentLabel.setText(String.format("%.4f", accelX.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", accelY.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", accelZ.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", gravity_scalar));
-
     }
 
     private void getLinearAcceleration(float[] rotVec, float[] accel) {
         float[] globalAcc = localToGlobal(rotVec, accel);
 
         globalAcc[2] -= (float)9.798;
-//        if (Math.abs(globalAcc[0]) < 0.1)
-//            globalAcc[0] = 0;
-//
-//        if (Math.abs(globalAcc[1]) < 0.1)
-//            globalAcc[1] = 0;
-//
-//        if (Math.abs(globalAcc[2]) < 0.1)
-//            globalAcc[2] = 0;
 
         lAccelX.add(globalAcc[0]);
         lAccelY.add(globalAcc[1]);
         lAccelZ.add(globalAcc[2]);
-
-//        currentLabel.setText(String.format("%.3f", lAccelX.get(lAccelT.size() - 1)) + "\n" + String.format("%.3f", lAccelY.get(lAccelT.size() - 1)) + "\n" +
-//        String.format("%.3f", lAccelZ.get(lAccelT.size() - 1)));
     }
-
 
     private void getGyroscope(SensorEvent event) {
         float gyX = event.values[0];
@@ -335,9 +309,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravX.add(result[0]);
         gravY.add(result[1]);
         gravZ.add(result[2]);
-
-//        currentLabel.setText(String.format("%.3f", result[0]) + "\n" + String.format("%.3f", result[1]) + "\n" +
-//                String.format("%.3f", result[2]));
     }
 
     private float[] localToGlobal(float[] rotVector, float[] accel) {
@@ -377,15 +348,15 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     @Override
     protected void onPause() {
-        Wearable.getMessageClient(this).removeListener(this);
-        stopSensing();
+        //stopSensing();
+        //Wearable.getMessageClient(this).removeListener(this);
         super.onPause();
     }
 
     @Override
     protected void onStop() {
-        Wearable.getMessageClient(this).removeListener(this);
         stopSensing();
+        Wearable.getMessageClient(this).removeListener(this);
         Log.d(TAG, "onStop()");
         super.onStop();
     }
@@ -490,7 +461,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravZ.clear();
 
         recordData = "";
-        recordTemp = null;
+        recordTemp = new short[1024*1000];
 
         Log.d("testdrive", "sent Data");
 
@@ -528,9 +499,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     private byte[] short2byte(short[] sData) {
-        int shortArrsize = sData.length;
-        byte[] bytes = new byte[shortArrsize * 2];
-        for (int i = 0; i < shortArrsize; i++) {
+        int shortSize = sData.length;
+        byte[] bytes = new byte[shortSize * 2];
+        for (int i = 0; i < shortSize; i++) {
             bytes[i * 2] = (byte) (sData[i] & 0x00FF);
             bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
             sData[i] = 0;
