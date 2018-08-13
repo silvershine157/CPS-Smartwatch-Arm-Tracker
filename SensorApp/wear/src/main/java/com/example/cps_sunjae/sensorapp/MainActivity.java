@@ -102,8 +102,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private short mAudioFormat, mChannelConfig;
     private AudioRecord mRecorder;
     private Thread mRecorderThread = null;
-    String recordData = "";
-    short recordTemp[] = new short[1024*1000];
+    private short recordTemp[] = new short[1024*1000];
+    private int recordSize;
     private boolean isPlaying = false;
 
     // Sensor variables
@@ -136,8 +136,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         findViewById(R.id.btn_start).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
-                        startSensing();
                         startRecording();
+                        startSensing();
                     }
                 }
         );
@@ -159,13 +159,18 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.RECORD_AUDIO}, 0);
         }
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WAKE_LOCK}, 0);
+        }
     }
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath().equals(START_SENSING_PATH)) {
-            startSensing();
             startRecording();
+            startSensing();
         } else if (messageEvent.getPath().equals(STOP_SENSING_PATH)) {
             stopRecording();
             stopSensing();
@@ -173,23 +178,42 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     public void startRecording() {
+        if(isPlaying) {
+            Log.d(TAG, "Already recording!");
+            return;
+        }
         mRecorder = findRecorder();
         if (mRecorder == null) {
             Log.d(TAG, "null mRecorder");
+            return;
         }
         mRecorder.startRecording();
         isPlaying = true;
         mRecorderThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0 ; isPlaying ; i++) {
-                    mRecorder.read(recordTemp, 1024*i, 1024);
-                }
+                onRecording();
             }
         });
         mRecorderThread.start();
     }
 
+    private void onRecording() {
+        int i;
+        for (i = 0 ; isPlaying ; i++) {
+            if (i >= 1000) {
+                this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        currentLabel.append("\nYou can't record over 20 seconds!");
+                    }
+                });
+                break;
+            }
+            mRecorder.read(recordTemp, 1024*i, 1024);
+        }
+        recordSize = i;
+    }
     public void stopRecording() {
         if (mRecorder != null) {
             isPlaying = false;
@@ -311,35 +335,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravZ.add(result[2]);
     }
 
-    private float[] localToGlobal(float[] rotVector, float[] accel) {
-        float temp[] = new float[4];
-        float result[] = new float[4];
-
-        float[] rotVectorInverse = new float[4];
-        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
-                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
-        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
-        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
-        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
-        rotVectorInverse[3] = rotVector[3] / inverseDenom;
-
-        hamiltonProduct(rotVectorInverse, accel, temp);
-        hamiltonProduct(temp, rotVector, result);
-
-        return new float[]{result[0], result[1], result[2]};
-    }
-
-    private void hamiltonProduct(float[] x, float[] y, float[] result) {
-        result[0] = (x[3]*y[0]) + (x[0]*y[3]) - (x[1]*y[2]) + (x[2]*y[1]);
-        result[1] = (x[3]*y[1]) + (x[0]*y[2]) + (x[1]*y[3]) - (x[2]*y[0]);
-        result[2] = (x[3]*y[2]) - (x[0]*y[1]) + (x[1]*y[0]) + (x[2]*y[3]);
-        result[3] = (x[3]*y[3]) - (x[0]*y[0]) - (x[1]*y[1]) - (x[2]*y[2]);
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i){
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -417,6 +412,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                     Float.toString(gravZ.get(i)) + "\n");
         }
 
+        short[] recordData = new short[1024*recordSize];
+        for(int i = 0; i < recordSize; i++) {
+            for(int j = 0; j < 1024; j++) {
+                recordData[i*1024 + j] = recordTemp[i*1024 + j];
+            }
+        }
+
         Log.d("testdrive", "sending data");
 
         PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/sensor");
@@ -425,7 +427,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Asset gravAsset = Asset.createFromBytes(grav.getBytes());
         Asset lAccelAsset = Asset.createFromBytes(lAccel.getBytes());
         Asset rotVecAsset = Asset.createFromBytes(rot.getBytes());
-        Asset recordAsset = Asset.createFromBytes(short2byte(recordTemp));
+        Asset recordAsset = Asset.createFromBytes(short2byte(recordData));
 
         putDataMapReq.getDataMap().putAsset(SENSOR_ACCEL, accelAsset);
 //        putDataMapReq.getDataMap().putAsset(SENSOR_GYRO, gyroAsset);
@@ -460,7 +462,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravY.clear();
         gravZ.clear();
 
-        recordData = "";
         recordTemp = new short[1024*1000];
 
         Log.d("testdrive", "sent Data");
@@ -507,6 +508,35 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             sData[i] = 0;
         }
         return bytes;
+    }
+
+    private float[] localToGlobal(float[] rotVector, float[] accel) {
+        float temp[] = new float[4];
+        float result[] = new float[4];
+
+        float[] rotVectorInverse = new float[4];
+        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
+                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
+        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
+        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
+        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
+        rotVectorInverse[3] = rotVector[3] / inverseDenom;
+
+        hamiltonProduct(rotVectorInverse, accel, temp);
+        hamiltonProduct(temp, rotVector, result);
+
+        return new float[]{result[0], result[1], result[2]};
+    }
+
+    private void hamiltonProduct(float[] x, float[] y, float[] result) {
+        result[0] = (x[3]*y[0]) + (x[0]*y[3]) - (x[1]*y[2]) + (x[2]*y[1]);
+        result[1] = (x[3]*y[1]) + (x[0]*y[2]) + (x[1]*y[3]) - (x[2]*y[0]);
+        result[2] = (x[3]*y[2]) - (x[0]*y[1]) + (x[1]*y[0]) + (x[2]*y[3]);
+        result[3] = (x[3]*y[3]) - (x[0]*y[0]) - (x[1]*y[1]) - (x[2]*y[2]);
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i){
     }
 }
 

@@ -5,6 +5,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -24,7 +27,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String STOP_MESSAGE = "stop.message";
 
     static TextView currentStatus;
-    Button btn_start, btn_stop;
+    Button btn_start, btn_stop, btn_file;
+
+    AudioTrack audioTrack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         currentStatus = findViewById(R.id.status);
         btn_start = findViewById(R.id.btn_start);
         btn_stop = findViewById(R.id.btn_stop);
+        btn_file = findViewById(R.id.btn_file);
         btn_start.setOnClickListener(new Button.OnClickListener(){
             public void onClick(View v){
                 btnStart();
@@ -47,6 +53,11 @@ public class MainActivity extends AppCompatActivity {
         btn_stop.setOnClickListener(new Button.OnClickListener(){
             public void onClick(View v){
                 btnStop();
+            }
+        });
+        btn_file.setOnClickListener(new Button.OnClickListener(){
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), FileActivity.class));
             }
         });
         checkPermission();
@@ -64,11 +75,43 @@ public class MainActivity extends AppCompatActivity {
         currentStatus.setText("Recording");
         Intent intent = new Intent(START_MESSAGE);
         sendBroadcast(intent);
+        //playSound();
     }
 
     private void btnStop() {
         Intent intent = new Intent(STOP_MESSAGE);
         sendBroadcast(intent);
+        //stopSound();
+    }
+
+    private void playSound() {
+        if (audioTrack != null) {
+            return;
+        }
+        double temp;
+        int hz = 19000;
+        int sampleRate = 48000;
+        short sound[] = new short[sampleRate];
+
+        for (int i = 0; i < sampleRate; i++) {
+            temp = Math.sin(2 * Math.PI * i / sampleRate * hz);
+            sound[i] = (short) (temp * 32767);
+        }
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, sampleRate, AudioTrack.MODE_STATIC);
+        audioTrack.write(sound, 0, sampleRate);
+        audioTrack.setLoopPoints(0, sampleRate/4, -1);
+        audioTrack.play();
+    }
+
+    private void stopSound() {
+        if (audioTrack == null) {
+            return;
+        }
+        audioTrack.pause();
+        audioTrack.stop();
+        audioTrack.release();
+        audioTrack = null;
     }
 
     public void checkPermission() {

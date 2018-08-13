@@ -3,8 +3,8 @@
     package="com.example.cps_sunjae.sensorapp">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
@@ -27,11 +27,16 @@
             android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action
-                    android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <data android:scheme="wear" android:host="*" android:pathPrefix="/sensorData" />
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+
+                <data
+                    android:host="*"
+                    android:pathPrefix="/sensorData"
+                    android:scheme="wear" />
             </intent-filter>
         </service>
+
+        <activity android:name=".FileActivity"></activity>
     </application>
 
 </manifest>

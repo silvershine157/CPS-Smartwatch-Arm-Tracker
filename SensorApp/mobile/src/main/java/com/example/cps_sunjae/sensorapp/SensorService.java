@@ -164,7 +164,8 @@ public class SensorService extends Service implements DataClient.OnDataChangedLi
             loadFromAsset("_lAccel.txt", dataMap.getAsset(SENSOR_lACCEL));
             loadFromAsset("_rotVector.txt", dataMap.getAsset(SENSOR_ROTVEC));
             writeAudio(dataMap.getAsset(RECORD));
-            Log.d("testdrive", "data written");
+            Log.d(TAG, "data written");
+
             MainActivity.makeText("data written");
             Random rand = new Random();
             int r = rand.nextInt(256);
