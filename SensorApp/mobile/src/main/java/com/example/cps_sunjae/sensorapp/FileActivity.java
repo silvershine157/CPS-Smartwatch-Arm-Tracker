@@ -3,8 +3,12 @@ package com.example.cps_sunjae.sensorapp;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -15,6 +19,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class FileActivity extends AppCompatActivity {
 
@@ -27,6 +32,8 @@ public class FileActivity extends AppCompatActivity {
     private File current = download;
 
     private ArrayList<File> selectedFiles = new ArrayList<>();
+
+    private boolean isStackFromBottom = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +67,51 @@ public class FileActivity extends AppCompatActivity {
                 return true;
             }
         });
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_swap:
+                Collections.reverse(data);
+                listAdapter.notifyDataSetChanged();
+                selectedFiles.clear();
+                return true;
+
+            case R.id.action_delete:
+                boolean isDelete;
+                for(File f:selectedFiles) {
+                    data.remove(f);
+                    isDelete = deleteRecursive(f);
+                    Log.d(TAG, "isDeleted = " + isDelete);
+                }
+                selectedFiles.clear();
+                listAdapter.notifyDataSetChanged();
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private boolean deleteRecursive(File file) {
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                if (!deleteRecursive(f)) {
+                    return false;
+                }
+            }
+        }
+        return file.delete();
     }
 
     private void onItemClickNormal(int position) {

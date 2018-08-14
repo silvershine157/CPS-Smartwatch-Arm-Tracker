@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < sampleRate; i++) {
             temp = Math.sin(2 * Math.PI * i / sampleRate * hz);
-            sound[i] = (short) (temp * 32767);
+            sound[i] = (short) (temp * 10000);
         }
         audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, sampleRate, AudioTrack.MODE_STATIC);
