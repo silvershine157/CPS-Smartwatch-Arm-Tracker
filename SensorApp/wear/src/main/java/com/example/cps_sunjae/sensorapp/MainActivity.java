@@ -1,11 +1,18 @@
 package com.example.cps_sunjae.sensorapp;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.wearable.activity.WearableActivity;
 import android.util.Log;
 import android.view.View;
@@ -21,6 +28,7 @@ import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 
@@ -37,18 +45,11 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String SENSOR_GRAV = "sensor.grav";
     private static final String SENSOR_ROTVEC = "sensor.rotvec";
     private static final String SENSOR_ORIENT = "sensor.orient";
-    private static final String SENSOR_GROTV = "sensor.grotv";
+    private static final String RECORD = "record";
 
     private static final String recording = "Recording...";
     private static final String stop = "Stop";
 
-    // Calibration
-//    private static final float x_m = (float)1.0047;
-//    private static final float x_c = (float)0.2229;
-//    private static final float y_m = (float)1.0038;
-//    private static final float y_c = (float)0.0701;
-//    private static final float z_m = (float)1.0015;
-//    private static final float z_c = (float)-0.0942;
     private static final float x_m = (float)1;
     private static final float x_c = (float)0;
     private static final float y_m = (float)1;
@@ -88,18 +89,22 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private ArrayList<Float>gravY = new ArrayList<>();
     private ArrayList<Float>gravZ = new ArrayList<>();
 
-    // Game Rotation Vector
-    private ArrayList<Long> grotvT = new ArrayList<>();
-    private ArrayList<Float> grotvX = new ArrayList<>();
-    private ArrayList<Float> grotvY = new ArrayList<>();
-    private ArrayList<Float> grotvZ = new ArrayList<>();
-    private ArrayList<Float> grotvW = new ArrayList<>();
-
     // Sensors
     private SensorManager mSensorManager;
     private Sensor mAccel;
     private Sensor mRot;
-    private Sensor mGRotV;
+
+    // Audio Recorder
+    private final int[] sampleRates = new int[] {48000, 44100, 22050, 11025, 8000, 16000};
+    private final short[] audioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT}; //AudioFormat.ENCODING_PCM_8BIT
+    private final short[] channelConfigs = new short[] {AudioFormat.CHANNEL_IN_MONO}; //AudioFormat.CHANNEL_IN_STEREO,
+    private int mSampleRate;
+    private short mAudioFormat, mChannelConfig;
+    private AudioRecord mRecorder;
+    private Thread mRecorderThread = null;
+    private short recordTemp[] = new short[1024*1000];
+    private int recordSize;
+    private boolean isPlaying = false;
 
     // Sensor variables
     private boolean start = false;
@@ -107,9 +112,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     // TextView
     TextView currentLabel;
 
-    /**
-     * Called when the activity is first created
-     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -126,15 +128,15 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         // Create the listeners for each sensor type
         mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mRot = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        mGRotV = mSensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
 
         // Set Labels
-        currentLabel = (TextView) findViewById(R.id.currentActivity);
+        currentLabel = findViewById(R.id.currentActivity);
 
         // Set Buttons
         findViewById(R.id.btn_start).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
+                        startRecording();
                         startSensing();
                     }
                 }
@@ -142,35 +144,98 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         findViewById(R.id.btn_stop).setOnClickListener(
                 new Button.OnClickListener() {
                     public void onClick(View v) {
+                        stopRecording();
                         stopSensing();
                     }
                 }
         );
+
+        checkPermission();
+    }
+
+    public void checkPermission() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+        }
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WAKE_LOCK}, 0);
+        }
     }
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath().equals(START_SENSING_PATH)) {
+            startRecording();
             startSensing();
         } else if (messageEvent.getPath().equals(STOP_SENSING_PATH)) {
+            stopRecording();
             stopSensing();
+        }
+    }
+
+    public void startRecording() {
+        if(isPlaying) {
+            Log.d(TAG, "Already recording!");
+            return;
+        }
+        mRecorder = findRecorder();
+        if (mRecorder == null) {
+            Log.d(TAG, "null mRecorder");
+            return;
+        }
+        mRecorder.startRecording();
+        isPlaying = true;
+        mRecorderThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                onRecording();
+            }
+        });
+        mRecorderThread.start();
+    }
+
+    private void onRecording() {
+        int i;
+        for (i = 0 ; isPlaying ; i++) {
+            if (i >= 1000) {
+                this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        currentLabel.append("\nYou can't record over 20 seconds!");
+                    }
+                });
+                break;
+            }
+            mRecorder.read(recordTemp, 1024*i, 1024);
+        }
+        recordSize = i;
+    }
+    public void stopRecording() {
+        if (mRecorder != null) {
+            isPlaying = false;
+            mRecorder.stop();
+            mRecorder.release();
+            mRecorder = null;
+            mRecorderThread = null;
         }
     }
 
     public void startSensing() {
         if (!start) {
             start = true;
-            currentLabel.setText("Recording...");
+            currentLabel.setText(recording);
             mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_FASTEST);
             mSensorManager.registerListener(this, mRot, SensorManager.SENSOR_DELAY_FASTEST);
-            mSensorManager.registerListener(this, mGRotV, SensorManager.SENSOR_DELAY_FASTEST);
         }
     }
 
     public void stopSensing() {
         if (start) {
             start = false;
-
             mSensorManager.unregisterListener(this);
             currentLabel.setText("Sending...");
             new SendTask().execute();
@@ -184,9 +249,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
                 getRotationVector(event);
             }
-//            } else if (event.sensor.getType() == Sensor.TYPE_GAME_ROTATION_VECTOR) {
-//                getGRotation(event);
-//            }
         }
     }
 
@@ -201,36 +263,17 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             accelY.add(accY);
             accelZ.add(accZ);
         }
-
-
-//        currentLabel.setText(String.format("%.4f", accelX.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", accelY.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", accelZ.get(accelT.size() - 1)) + "\n" +
-//                String.format("%.3f", gravity_scalar));
-
     }
 
     private void getLinearAcceleration(float[] rotVec, float[] accel) {
         float[] globalAcc = localToGlobal(rotVec, accel);
 
         globalAcc[2] -= (float)9.798;
-//        if (Math.abs(globalAcc[0]) < 0.1)
-//            globalAcc[0] = 0;
-//
-//        if (Math.abs(globalAcc[1]) < 0.1)
-//            globalAcc[1] = 0;
-//
-//        if (Math.abs(globalAcc[2]) < 0.1)
-//            globalAcc[2] = 0;
 
         lAccelX.add(globalAcc[0]);
         lAccelY.add(globalAcc[1]);
         lAccelZ.add(globalAcc[2]);
-
-//        currentLabel.setText(String.format("%.3f", lAccelX.get(lAccelT.size() - 1)) + "\n" + String.format("%.3f", lAccelY.get(lAccelT.size() - 1)) + "\n" +
-//        String.format("%.3f", lAccelZ.get(lAccelT.size() - 1)));
     }
-
 
     private void getGyroscope(SensorEvent event) {
         float gyX = event.values[0];
@@ -271,26 +314,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         }
     }
 
-    private void getGRotation(SensorEvent event) {
-        float gameX = event.values[0];
-        float gameY = event.values[1];
-        float gameZ = event.values[2];
-        float gameW = event.values[3];
-
-        // Get euler angles from game rotation vector
-        /*
-        float[] rotationMatrix = new float[9];
-        float[] orientationAngles = new float[3];
-        SensorManager.getRotationMatrixFromVector(rotationMatrix,event.values);
-        SensorManager.getOrientation(rotationMatrix, orientationAngles);
-        */
-        grotvT.add(event.timestamp);
-        grotvX.add(gameX);
-        grotvY.add(gameY);
-        grotvZ.add(gameZ);
-        grotvW.add(gameW);
-    }
-
     private void calcGravity(float[] rotVector) {
         float[] gravity = {0,0,(float)9.798, 0};
         float temp[] = new float[4];
@@ -310,58 +333,33 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         gravX.add(result[0]);
         gravY.add(result[1]);
         gravZ.add(result[2]);
-
-//        currentLabel.setText(String.format("%.3f", result[0]) + "\n" + String.format("%.3f", result[1]) + "\n" +
-//                String.format("%.3f", result[2]));
-    }
-
-    private float[] localToGlobal(float[] rotVector, float[] accel) {
-        float temp[] = new float[4];
-        float result[] = new float[4];
-
-        float[] rotVectorInverse = new float[4];
-        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
-                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
-        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
-        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
-        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
-        rotVectorInverse[3] = rotVector[3] / inverseDenom;
-
-        hamiltonProduct(rotVectorInverse, accel, temp);
-        hamiltonProduct(temp, rotVector, result);
-
-        return new float[]{result[0], result[1], result[2]};
-    }
-
-    private void hamiltonProduct(float[] x, float[] y, float[] result) {
-        result[0] = (x[3]*y[0]) + (x[0]*y[3]) - (x[1]*y[2]) + (x[2]*y[1]);
-        result[1] = (x[3]*y[1]) + (x[0]*y[2]) + (x[1]*y[3]) - (x[2]*y[0]);
-        result[2] = (x[3]*y[2]) - (x[0]*y[1]) + (x[1]*y[0]) + (x[2]*y[3]);
-        result[3] = (x[3]*y[3]) - (x[0]*y[0]) - (x[1]*y[1]) - (x[2]*y[2]);
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i){
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
         Wearable.getMessageClient(this).addListener(this);
     }
 
     @Override
     protected void onPause() {
+        //stopSensing();
+        //Wearable.getMessageClient(this).removeListener(this);
         super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
         stopSensing();
+        Wearable.getMessageClient(this).removeListener(this);
+        Log.d(TAG, "onStop()");
+        super.onStop();
     }
 
     private class SendTask extends AsyncTask<Void, Void, Void> {
         @Override
         protected Void doInBackground(Void... args) {
             sendSensorData();
-            currentLabel.setText(stop);
             return null;
         }
     }
@@ -372,7 +370,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         String lAccel = "";
         String rot = "";
         String grav = "";
-        String grotv = "";
 
         // Accelerometer
         for (int i = 0; i < accelT.size(); i++) {
@@ -407,21 +404,19 @@ public class MainActivity extends WearableActivity implements SensorEventListene
                             rotW.get(i) + "\n");
         }
 
-        // Game Rotation Vector
-        for (int i = 0; i < grotvT.size(); i++) {
-            grotv = grotv.concat(grotvT.get(i) + "\t" +
-                    grotvX.get(i) + "\t" +
-                    grotvY.get(i) + "\t" +
-                    grotvZ.get(i) + "\t" +
-                    grotvW.get(i) + "\n");
-        }
-
         // Gravity
         for (int i = 0; i < gravT.size(); i++) {
             grav = grav.concat(Long.toString(gravT.get(i)) + "\t" +
                     Float.toString(gravX.get(i)) + "\t" +
                     Float.toString(gravY.get(i)) + "\t" +
                     Float.toString(gravZ.get(i)) + "\n");
+        }
+
+        short[] recordData = new short[1024*recordSize];
+        for(int i = 0; i < recordSize; i++) {
+            for(int j = 0; j < 1024; j++) {
+                recordData[i*1024 + j] = recordTemp[i*1024 + j];
+            }
         }
 
         Log.d("testdrive", "sending data");
@@ -432,14 +427,14 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         Asset gravAsset = Asset.createFromBytes(grav.getBytes());
         Asset lAccelAsset = Asset.createFromBytes(lAccel.getBytes());
         Asset rotVecAsset = Asset.createFromBytes(rot.getBytes());
-        Asset grvAsset = Asset.createFromBytes(grotv.getBytes());
+        Asset recordAsset = Asset.createFromBytes(short2byte(recordData));
 
         putDataMapReq.getDataMap().putAsset(SENSOR_ACCEL, accelAsset);
 //        putDataMapReq.getDataMap().putAsset(SENSOR_GYRO, gyroAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_GRAV,gravAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_lACCEL,lAccelAsset);
         putDataMapReq.getDataMap().putAsset(SENSOR_ROTVEC,rotVecAsset);
-        putDataMapReq.getDataMap().putAsset(SENSOR_GROTV,grvAsset);
+        putDataMapReq.getDataMap().putAsset(RECORD, recordAsset);
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest().setUrgent();
 
@@ -462,17 +457,86 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         rotY.clear();
         rotZ.clear();
         rotW.clear();
-        grotvT.clear();
-        grotvX.clear();
-        grotvY.clear();
-        grotvZ.clear();
-        grotvW.clear();
         gravT.clear();
         gravX.clear();
         gravY.clear();
         gravZ.clear();
 
+        recordTemp = new short[1024*1000];
+
         Log.d("testdrive", "sent Data");
+
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                currentLabel.setText(stop);
+            }
+        });
+    }
+
+    private AudioRecord findRecorder() {
+        for (int rate : sampleRates) {
+            for (short format : audioFormats) {
+                for (short channel : channelConfigs) {
+                    try {
+                        int bufferSize = AudioRecord.getMinBufferSize(rate, channel, format);
+                        if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
+                            mSampleRate = rate;
+                            mAudioFormat = format;
+                            mChannelConfig = channel;
+                            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, mSampleRate, mChannelConfig, mAudioFormat, bufferSize);
+                            if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                                Log.d(TAG, "SampleRate : " + mSampleRate + ", AudioFormat : " + mAudioFormat + ", Channel : " + mChannelConfig);
+                                return recorder;
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private byte[] short2byte(short[] sData) {
+        int shortSize = sData.length;
+        byte[] bytes = new byte[shortSize * 2];
+        for (int i = 0; i < shortSize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
+    }
+
+    private float[] localToGlobal(float[] rotVector, float[] accel) {
+        float temp[] = new float[4];
+        float result[] = new float[4];
+
+        float[] rotVectorInverse = new float[4];
+        float inverseDenom = (float)(Math.pow(rotVector[3],2) + Math.pow(rotVector[0], 2)
+                + Math.pow(rotVector[1], 2) + Math.pow(rotVector[2], 2));
+        rotVectorInverse[0] = (-1)*rotVector[0] / inverseDenom;
+        rotVectorInverse[1] = (-1)*rotVector[1] / inverseDenom;
+        rotVectorInverse[2] = (-1)*rotVector[2] / inverseDenom;
+        rotVectorInverse[3] = rotVector[3] / inverseDenom;
+
+        hamiltonProduct(rotVectorInverse, accel, temp);
+        hamiltonProduct(temp, rotVector, result);
+
+        return new float[]{result[0], result[1], result[2]};
+    }
+
+    private void hamiltonProduct(float[] x, float[] y, float[] result) {
+        result[0] = (x[3]*y[0]) + (x[0]*y[3]) - (x[1]*y[2]) + (x[2]*y[1]);
+        result[1] = (x[3]*y[1]) + (x[0]*y[2]) + (x[1]*y[3]) - (x[2]*y[0]);
+        result[2] = (x[3]*y[2]) - (x[0]*y[1]) + (x[1]*y[0]) + (x[2]*y[3]);
+        result[3] = (x[3]*y[3]) - (x[0]*y[0]) - (x[1]*y[1]) - (x[2]*y[2]);
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i){
     }
 }
 
